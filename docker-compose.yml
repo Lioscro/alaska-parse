@@ -1,0 +1,151 @@
+version: "2.4"
+
+services:
+  # MongoDB
+  mongo:
+    image: mongo:xenial
+    restart: always
+    command: --smallfiles --logpath=/dev/null # suppress output
+    volumes:
+      - ./db:/data/db
+    expose:
+      - 27017
+    networks:
+      - backend
+    healthcheck:
+      test: echo 'db.stats().ok' | mongo mongo:27017/alaska --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 3
+  # Flask Webhook Server
+  webhook:
+    build:
+      context: ./docker/webhook
+    image: alaska-webhook
+    restart: always
+    environment:
+      - PARSE_HOSTNAME=${PARSE_HOSTNAME}
+      - PARSE_APP_ID=${PARSE_APP_ID}
+      - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./src/webhook:/flask
+      - data:/alaska/data
+      - scripts:/alaska/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - backend
+  # Worker server
+  worker:
+    build:
+      context: ./docker/worker
+    image: alaska-worker
+    restart: always
+    environment:
+      - PARSE_HOSTNAME=http://parse-server:1337/parse
+      - PARSE_APP_ID=${PARSE_APP_ID}
+      - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
+    volumes:
+      - ./src/worker:/worker
+      - data:/alaska/data
+      - scripts:/alaska/scripts
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - parse-server
+    networks:
+      - backend
+  # NGINX server
+  nginx:
+    image: nginx:stable
+    restart: always
+    environment:
+      - PARSE_HOSTNAME=${PARSE_HOSTNAME}
+      - PARSE_APP_ID=${PARSE_APP_ID}
+      - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
+    ports:
+      - "80:80"
+    volumes:
+      - ./src/web:/usr/share/nginx/html:ro
+    depends_on:
+      - parse-server
+    networks:
+      - backend
+  # FTP server
+  ftp:
+    image: stilliard/pure-ftpd:hardened
+    restart: always
+    environment:
+      - PUBLICHOST=${PUBLICHOST}
+      - FTP_USER_NAME=alaska
+      - FTP_USER_PASS=alaska
+      - FTP_USER_HOME=/alaska/data
+      - FTP_MAX_CLIENTS=50
+      - FTP_MAX_CONNECTIONS=10
+      - FTP_PASSIVE_PORTS=30000:30099
+      - ADDED_FLAGS=-d -d -O w3c:/var/log/pure-ftpd/transfer.log -Y 0
+    ports:
+      - "30000-30099:30000-30099"
+      - "21:21"
+    volumes:
+      - ./data/ftp:/etc/pure-ftpd
+      - data:/alaska/data
+    depends_on:
+      - parse-server
+    networks:
+      - backend
+  # Parse Server
+  parse-server:
+    image: parseplatform/parse-server:3.2.3
+    restart: always
+    volumes:
+      - ./src/cloud:/parse-server/cloud
+    environment:
+      - PARSE_SERVER_MASTER_KEY=${PARSE_MASTER_KEY}
+      - PARSE_SERVER_APPLICATION_ID=${PARSE_APP_ID}
+      - VERBOSE=0
+      - PARSE_SERVER_DATABASE_URI=mongodb://mongo:27017/alaska
+      - PARSE_SERVER_URL=${PARSE_HOSTNAME}
+      - PARSE_SERVER_CLOUD=/parse-server/cloud/main.js
+    ports:
+      - "1337:1337"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - backend
+  # Parse Dashboard
+  parse-dashboard:
+    image: parseplatform/parse-dashboard
+    restart: always
+    command: --dev
+    ports:
+      - "4040:4040"
+    environment:
+      - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=1
+      - PARSE_DASHBOARD_SERVER_URL=http://0.0.0.0:1337/parse
+      - PARSE_DASHBOARD_APP_ID=${PARSE_APP_ID}
+      - PARSE_DASHBOARD_MASTER_KEY=${PARSE_MASTER_KEY}
+      - PARSE_DASHBOARD_USER_ID=admin
+      - PARSE_DASHBOARD_USER_PASSWORD=admin
+    depends_on:
+      - parse-server
+    networks:
+      - backend
+
+volumes:
+  data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data
+  scripts:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/src/scripts
+
+networks:
+  backend:
