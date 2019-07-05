@@ -8,6 +8,7 @@ RUN ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime \
     && echo $TIMEZONE > /etc/timezone
 
 # versions
+ARG MINICONDA_VER
 ARG MINICONDA3_URL=https://repo.continuum.io/miniconda/Miniconda3-$MINICONDA_VER-Linux-x86_64.sh
 ARG BOWTIE2_VER=2.3.4
 ARG SAMTOOLS_VER=1.7

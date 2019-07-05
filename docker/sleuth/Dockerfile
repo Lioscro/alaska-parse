@@ -8,6 +8,7 @@ RUN ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && \
     echo $TIMEZONE > /etc/timezone
 
 # default to 4.5.1
+ARG MINICONDA_VER
 ARG MINICONDA3_URL=https://repo.continuum.io/miniconda/Miniconda3-$MINICONDA_VER-Linux-x86_64.sh
 ARG SLEUTH_VER=0.30.0
 

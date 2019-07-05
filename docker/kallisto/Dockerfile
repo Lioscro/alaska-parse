@@ -1,13 +1,14 @@
 # Kallisto automation using docker container
 # UBUNTU VERSION: 16.04 (xenial)
 FROM ubuntu:xenial
-
 # Timezone
 ARG TIMEZONE=America/Los_Angeles
 RUN ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime && \
     echo $TIMEZONE > /etc/timezone
 
 # versions
+ARG MINICONDA_VER
+ARG KALLISTO_VER
 ARG MINICONDA3_URL=https://repo.continuum.io/miniconda/Miniconda3-$MINICONDA_VER-Linux-x86_64.sh
 ARG KALLISTO_URL=https://github.com/pachterlab/kallisto/releases/download/v$KALLISTO_VER/kallisto_linux-v$KALLISTO_VER.tar.gz
 

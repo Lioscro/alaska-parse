@@ -2,8 +2,10 @@
 FROM ubuntu:xenial
 
 ARG BOWTIE2_VER
-ARG MINICONDA3_URL
-ARG KALLISTO_URL
+ARG MINICONDA3_VER
+ARG KALLISTO_VER
+ARG MINICONDA3_URL=https://repo.continuum.io/miniconda/Miniconda3-$MINICONDA_VER-Linux-x86_64.sh
+ARG KALLISTO_URL=https://github.com/pachterlab/kallisto/releases/download/v$KALLISTO_VER/kallisto_linux-v$KALLISTO_VER.tar.gz
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
