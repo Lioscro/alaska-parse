@@ -9,8 +9,6 @@ import shutil
 import hashlib
 import traceback
 import datetime as dt
-import smtplib
-from email.mime.text import MIMEText
 
 # import docker
 from flask import Flask, request, jsonify, send_file, send_from_directory
@@ -238,6 +236,14 @@ def project_initialize(objectId):
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
 
+@app.route('/project/<objectId>/ftp', methods=['POST'])
+def project_ftp(objectId):
+    try:
+        return _project_ftp(objectId)
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
 @app.route('/project/<objectId>/delete', methods=['POST'])
 def project_delete(objectId):
     try:
@@ -363,7 +369,6 @@ def _project_initialize(objectId):
           + '-u ftpuser -d {}"').format(passwd, passwd, objectId, read_path)
     print(cmd, file=sys.stderr)
 
-    # Docker client.
     try:
         ftp_name = config['repoName'] + '_' + config['ftpService'] + '_1'
         client = docker.from_env()
@@ -380,6 +385,32 @@ def _project_initialize(objectId):
         raise e
 
     return jsonify({'result': {'paths': paths, 'ftpPassword': passwd}})
+
+def _project_ftp(objectId):
+    # Get project from server.
+    Project = Object.factory('Project')
+    project = Project.Query.get(objectId=objectId)
+
+    config = Config.get()
+
+    # Change ftp home directory to the project root.
+    cmd = ('pure-pw usermod {} -d {} -m').format(objectId, project.paths['root'])
+    try:
+        ftp_name = config['repoName'] + '_' + config['ftpService'] + '_1'
+        client = docker.from_env()
+        ftp = client.containers.get(ftp_name)
+
+        # run command.
+        out = ftp.exec_run(cmd)
+        exit_code = out[0]
+
+        if exit_code != 0:
+            raise Exception('non-zero exit code on ftp user creation')
+    except Exception as e:
+        print('error occured while modifying ftp user {}'.format(objectId), file=sys.stderr)
+        raise e
+
+    return jsonify({'result': project.paths['root']})
 
 def _project_delete(objectId):
     # Get project from server.
@@ -639,11 +670,11 @@ def project_email(objectId):
         data = request.get_json()
         subject = data['subject']
         message = data['message']
+        print(subject, message, file=sys.stderr, flush=True)
         return _project_email(objectId, subject, message)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
-
 
 def _project_email(objectId, subject, message):
     """
@@ -652,44 +683,58 @@ def _project_email(objectId, subject, message):
     Project = Object.factory('Project')
     project = Project.Query.get(objectId=objectId)
 
+    config = Config.get()
+    host = config['host']
+    data_path = config['dataPath']
+    email_dir = config['emailDir']
+    email_path = os.path.join(data_path, email_dir)
+
     datetime = (dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 + ' Pacific Time')
-    url = 'http://alaska.caltech.edu/?id=' + objectId
-    fr = '{}@alaska.caltech.edu'.format(objectId)
+    url = 'http://{}/?id={}'.format(host, objectId)
+    fr = '{}@{}'.format(objectId, host)
     to = project.email
 
+    format_dict = {'message': message,
+                   'objectId': objectId,
+                   'url': url,
+                   'host': host,
+                   'password': project.ftpPassword,
+                   'to': to,
+                   'datetime': datetime}
+
     # Footer that is appended to every email.
-    full_msg = '\
+    full_message = '\
     <html> \
         <head></head> \
         <body> \
-         <p>{}</p> \
+         <p>{message}</p> \
          <br> \
          <hr> \
-         <p>Project ID: {}<br> \
-         Unique URL: <a href="{}">{}</a><br> \
-         FTP server: alaska.caltech.edu<br> \
+         <p>Project ID: {objectId}<br> \
+         Unique URL: <a href="{url}">{url}</a><br> \
+         FTP server: {host}<br> \
          FTP port: 21<br> \
-         FTP username: {}<br> \
-         FTP password: {}<br> \
-         This message was sent to {} at {}.<br> \
+         FTP username: {objectId}<br> \
+         FTP password: {password}<br> \
+         This message was sent to {to} at {datetime}.<br> \
          <b>Please do not reply to this email.</b></p> \
         </body> \
     </html> \
-    '.format(message, objectId, url, url, objectId, project.ftpPassword, to, datetime)
+    '.format(**format_dict)
 
-    msg = MIMEText(full_msg, 'html')
-    msg['Subject'] = subject
-    msg['From'] = fr
-    conn = None
-    try:
-        conn = smtplib.SMTP('localhost')
-        conn.sendmail(fr, to, msg.as_string())
-    except Exception as e:
-        traceback.print_exc()
-    finally:
-        if conn is not None:
-            conn.quit()
+    email = {'to': to,
+             'from': fr,
+             'subject': subject,
+             'message': full_message}
+
+    email_file = '{}.json'.format(datetime)
+    output_path = os.path.join(email_path, email_file)
+
+    with open(output_path, 'w') as f:
+        json.dump(email, f, indent=4)
+
+    return jsonify({'result': email_file})
 
 
 if __name__ == '__main__':

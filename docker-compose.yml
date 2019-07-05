@@ -6,7 +6,7 @@ services:
     image: python:3
     restart: always
     working_dir: /email
-    command: python3 poller.py /alaska/data/email -i 5
+    command: python3 poller.py /alaska/data/email -i 60
     volumes:
       - ./src/email:/email
       - data:/alaska/data

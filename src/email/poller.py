@@ -20,9 +20,10 @@ def poll(path='/alaska/data/email', interval=60):
             if not file.endswith('.json'):
                 continue
 
-            with open(os.path.join(path, file), 'r') as f:
-                print('sending {}'.format(file))
-                try:
+            email_path = os.path.join(path, file)
+            try:
+                with open(email_path, 'r') as f:
+                    print('sending {}'.format(file))
                     data = json.load(f)
 
                     fr = data['from']
@@ -30,21 +31,29 @@ def poll(path='/alaska/data/email', interval=60):
                     subject = data['subject']
                     message = data['message']
 
+                    print(file, fr, to, subject, flush=True)
+
                     m = MIMEText(message, 'html')
                     m['From'] = fr
                     m['Subject'] = subject
 
                     with smtplib.SMTP('localhost') as conn:
                         conn.sendmail(fr, to, m.as_string())
-                except json.JSONDecodeError:
-                    print('{} is not a valid json'.format(file), flush=True)
-                except KeyError:
-                    print('required key doesn\'t exist in {}'.format(file), flush=True)
-                except (smtplib.SMTPConnectError, ConnectionError):
-                    print('failed to connect to SMTP server', flush=True)
-                except Exception as e:
-                    print(e, flush=True)
-                    print('unknown error while sending {}'.format(file), flush=True)
+
+                # Email send was successful.
+                new_path = os.path.join(path, 'sent', file)
+                os.makedirs(os.path.dirname(new_path), exist_ok=True)
+                os.rename(email_path, new_path)
+
+            except json.JSONDecodeError:
+                print('{} is not a valid json'.format(file), flush=True)
+            except KeyError:
+                print('required key doesn\'t exist in {}'.format(file), flush=True)
+            except (smtplib.SMTPConnectError, ConnectionError):
+                print('failed to connect to SMTP server', flush=True)
+            except Exception as e:
+                print(e, flush=True)
+                print('unknown error while sending {}'.format(file), flush=True)
 
         time.sleep(interval)
 

@@ -45,7 +45,14 @@ register(PARSE_APP_ID, '', master_key=PARSE_MASTER_KEY)
 
 def dequeue():
     Job = Object.factory('Job')
-    return Job.Query.filter(queuePosition__gte=0).order_by('queuePosition').limit(1)
+    jobs = Job.Query.filter(queuePosition__gte=0).order_by('queuePosition').limit(1)
+
+    if jobs:
+        job = jobs[0]
+        Function('jobStarted')(objectId=job.objectId)
+        return Job.Query.get(objectId=job.objectId)
+    else:
+        return False
 
 def wait():
     # Get wait time.
@@ -76,19 +83,15 @@ def start():
 
     while True:
         # Dequeue job.
-        dequeued = dequeue()
+        job = dequeue()
 
-        if len(dequeued) > 0:
-            job = dequeued[0]
+        if job:
             try:
                 project = job.project
                 analysis = job.analysis
                 print('Retrieved job {} for project {}'.format(job.objectId,
                                                                project.objectId),
                       flush=True)
-
-                project.status = 'running'
-                project.save()
 
                 # Make directory if it doesn't exist.
                 if analysis.code not in project.paths:
@@ -142,9 +145,7 @@ def start():
                 # output path.
                 output_file = '{}_output.txt'.format(analysis.code)
                 output_path = os.path.join(project.paths[analysis.code], output_file)
-                job.status = 'running'
                 job.outputPath = output_path
-                job.startedAt = dt.datetime.now()
                 start = time.time()
                 job.save()
 

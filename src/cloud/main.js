@@ -274,7 +274,25 @@ Parse.Cloud.define('startProject', async (request) => {
   try {
     var response = await Parse.Cloud.httpRequest({
       method: 'POST',
-      url: `http://webhook:5000/project/${project.id}/citation`,
+      url: `http://webhook:5000/project/${objectId}/citation`,
+      followRedirects: true
+    });
+  } catch (e) {
+    return {'error': 'httprequest error'};
+  }
+  var data = response.data;
+
+  console.log(data);
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  // Change ftp home directory.
+  try {
+    var response = await Parse.Cloud.httpRequest({
+      method: 'POST',
+      url: `http://webhook:5000/project/${objectId}/ftp`,
       followRedirects: true
     });
   } catch (e) {
@@ -291,6 +309,28 @@ Parse.Cloud.define('startProject', async (request) => {
   var jobs = await startProject(project);
 
   return jobs;
+});
+
+Parse.Cloud.define('jobStarted', async (request) => {
+  const objectId = request.params.objectId;
+
+  // Get the job.
+  var query = new Parse.Query('Job');
+  var job = await query.get(objectId);
+  var project = await job.get('project').fetch();
+
+  // Set the job to running.
+  await job.save({'status': 'running', 'startedAt': new Date()});
+
+  // Set project status if appropriate.
+  if (project.get('status') != 'running') {
+    await project.save({'status': 'running'});
+    sendEmail(project.id, `Analysis started for project ${project.id}`,
+      `Alaska has started analysis of project ${project.id}. Please visit the unique URL for more details.`
+    );
+  }
+
+  return job;
 });
 
 Parse.Cloud.define('jobSuccess', async (request) => {
@@ -313,6 +353,9 @@ Parse.Cloud.define('jobSuccess', async (request) => {
   }
   if (success) {
     project.set('status', 'success');
+    sendEmail(project.id, `Analysis finished for project ${project.id}`,
+      `Alaska finished analysis of project ${project.id}. Please visit the unique URL.`
+    )
   }
 
   await project.save({'oldProgress': project.get('oldProgress') + 1});
@@ -356,6 +399,11 @@ Parse.Cloud.define('jobError', async (request) => {
   }
 
   await updateQueuePositions();
+
+  // Send error email.
+  sendEmail(project.id, `Error has occured for project ${objectId}`,
+    `Alaska encountered an error while running analysis for project ${objectId}.
+    Please visit the unique URL for more details.`);
 
   return job;
 });
@@ -440,6 +488,20 @@ Parse.Cloud.define('openSleuth', async (request) => {
 
     return {'port': port, 'wait': 5000};
   }
+});
+
+Parse.Cloud.define('sendEmail', async (request) => {
+  const objectId = request.params.objectId;
+  const subject = request.params.subject;
+  const message = request.params.message;
+
+  const response = await sendEmail(objectId, subject, message);
+  const data = response.data;
+
+  if (!('result' in data)) {
+    throw data;
+  }
+  return data.result;
 });
 
 
@@ -548,6 +610,11 @@ async function startProject(project) {
   last.set('archive', true);
   await last.save();
 
+  // Send error email.
+  sendEmail(project.id, `Project ${project.id} has been queued`,
+    `Alaska has put analysis of project ${project.id} in the queue.
+    Please visit the unique URL for further details.`);
+
   return jobs;
 
 }
@@ -584,6 +651,23 @@ async function updateQueuePositions() {
     job.set('queuePosition', i);
     await job.save();
   }
+}
+
+async function sendEmail(objectId, subject, message) {
+  try {
+    var response = await Parse.Cloud.httpRequest({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      url: `http://webhook:5000/project/${objectId}/email`,
+      followRedirects: true,
+      body: { subject, message }
+    });
+  } catch (e) {
+    return {'error': 'httprequest error'};
+  }
+  return response;
 }
 
 // Parse.Cloud.beforeDelete('Read', async function(request) {
