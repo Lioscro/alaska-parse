@@ -8,8 +8,12 @@ import docker
 import shutil
 import hashlib
 import traceback
+import datetime as dt
+import smtplib
+from email.mime.text import MIMEText
+
 # import docker
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from urllib.parse import unquote_plus
 from threading import Thread
 
@@ -242,14 +246,23 @@ def project_delete(objectId):
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
 
-@app.route('/project/<objectId>/download', defaults={'code': None}, methods=['POST'])
-@app.route('/project/<objectId>/download/<code>', methods=['POST'])
-def project_download(objectId, code):
+@app.route('/project/<objectId>/citation', methods=['POST'])
+def project_citation(objectId):
     try:
-        return _project_download(objectId, code)
+        return _project_citation(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
+
+@app.route('/project/<objectId>/file/<code>', defaults={'name': None}, methods=['GET'])
+@app.route('/project/<objectId>/file/<code>/<name>', methods=['GET'])
+def project_get(objectId, code, name):
+    try:
+        return _project_get(objectId, code, name)
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
 
 @app.route('/job/<objectId>/output', methods=['POST'])
 def job_output(objectId):
@@ -259,10 +272,18 @@ def job_output(objectId):
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
 
-@app.route('/project/<objectId>/sleuth', methods=['POST'])
-def project_sleuth(objectId):
+@app.route('/project/<objectId>/sleuth/<int:port>', methods=['POST'])
+def project_sleuth(objectId, port):
     try:
-        return _project_sleuth(objectId)
+        return _project_sleuth(objectId, port)
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
+@app.route('/project/<objectId>/sleuth/close', methods=['POST'])
+def project_sleuth_close(objectId):
+    try:
+        return _project_sleuth_close(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -384,52 +405,163 @@ def _job_output(objectId):
 
     return jsonify({'result': output})
 
-def _project_download(objectId, code):
+def _project_citation(objectId):
     # Get project from server.
     Project = Object.factory('Project')
     project = Project.Query.get(objectId=objectId)
 
-    path = project.files[code]
-    return send_file(path, attachment_filename='{}_{}.tar.gz'.format(objectId, code))
+    config = Config.get()
+    citation_file = config['citationFile']
+    citation_path = os.path.join(project.paths['root'], citation_file)
 
-def _project_sleuth(objectId):
+    samples = project.relation('samples').query()
+
+    args = ''
+    genus = ''
+    species = ''
+    ref_version = ''
+    for sample in samples:
+        genus = sample.reference.organism.genus
+        species = sample.reference.organism.species
+        ref_version = sample.reference.version
+
+        arg = '-b {} --bias'.format(config['kallistoBootstraps'])
+
+        if sample.readType == 'single':
+            arg += ' --single -l {} -s {}'.format(sample.readLength,
+                                                  sample.readStd)
+
+        args += '{}({}):\t{}.\n'.format(sample.objectId, sample.name, arg)
+
+
+    format_dict = {'factor': str(len(project.factors)),
+                   'genus': genus.capitalize(),
+                   'species': species,
+                   'ref_version': ref_version,
+                   'args': args,
+                   **config}
+
+    info = ('RNA-seq data was analyzed with Alaska using the '
+        '{factor}-factor design option.\nBriefly, Alaska '
+        'performs quality control using\nBowtie2 (v{versionBowtie}), '
+        'Samtools (v{versionSamtools}), RSeQC (v{versionRseqc}), '
+        'FastQC (v{versionFastqc}) and outputs\n'
+        'a summary report generated using MultiQC (v{versionMultiqc}). Read '
+        'quantification and\ndifferential expression analysis of '
+        'transcripts were performed using\nKallisto (v{versionKallisto}) '
+        'and Sleuth (v{versionSleuth}), respectively. '
+        'Kallisto (v{versionKallisto}) was run using the\nfollowing flags for each '
+        'sample:\n{args}\n'
+        'Reads were aligned using\n{genus} {species} genome '
+        'version {ref_version}\nas provided by Wormbase.\n\n'
+        'Differential expression analyses with Sleuth (v{versionSleuth}) were '
+        'performed using a\nWald Test corrected for '
+        'multiple-testing.\n\n').format(**format_dict)
+
+    # Add more info if enrichment analysis was performed.
+    if genus == 'caenorhabditis' and species == 'elegans':
+        info += ('Enrichment analysis was performed using the WormBase '
+                 'Enrichment Suite:\n'
+                 'https://doi.org/10.1186/s12859-016-1229-9\n'
+                 'https://www.wormbase.org/tools/enrichment/tea/tea.cgi\n')
+    # if self.epistasis:
+    #     info += ('Alaska performed epistasis analyses as first '
+    #              'presented in\nhttps://doi.org/10.1073/pnas.1712387115\n')
+
+    with open(citation_path, 'w') as f:
+        f.write(info)
+
+    project.files['citation'] = citation_path
+    project.save()
+
+    return jsonify({'result': info})
+
+def _project_get(objectId, code, name):
+    # Get project from server.
+    Project = Object.factory('Project')
+    project = Project.Query.get(objectId=objectId)
+
+    if name:
+        path = project.files[code][name]
+    else:
+        path = project.files[code]
+
+    print(path, file=sys.stderr)
+
+    # If the file is an html file, serve it as a static file.
+    # Otherwise, send it as a file.
+    extension = '.'.join(path.split('.')[1:])
+    dirname = os.path.dirname(path)
+    basename = os.path.basename(path)
+    if extension == 'html':
+        return send_from_directory(dirname, basename)
+
+    if name:
+        filename = '{}_{}_{}.{}'.format(objectId, code, name, extension)
+    else:
+        filename = '{}_{}.{}'.format(objectId, code, extension)
+    return send_from_directory(dirname, basename, as_attachment=True,
+                               attachment_filename=filename)
+
+def _project_sleuth(objectId, port):
     # Get project from server.
     Project = Object.factory('Project')
     project = Project.Query.get(objectId=objectId)
 
     # Check if there is a sleuth container open for this project.
-    if project.shiny is not None:
-        return jsonify({'result': project.shiny.port})
-    else:
-        config = Config.get()
-        data_volume = config['repoName'] + '_' + config['dataVolume']
-        data_path = config['dataPath']
-        script_volume = config['repoName'] + '_' + config['scriptVolume']
-        script_path = config['scriptPath']
-        network = config['repoName'] + '_' + config['backendNetworkName']
-        shiny_script = config['shinyScript']
-        so_path = project.files[config['diffDir']]['sleuth']
+    config = Config.get()
+    data_volume = config['repoName'] + '_' + config['dataVolume']
+    data_path = config['dataPath']
+    script_volume = config['repoName'] + '_' + config['scriptVolume']
+    script_path = config['scriptPath']
+    network = config['repoName'] + '_' + config['backendNetworkName']
+    shiny_script = config['shinyScript']
+    so_path = project.files[config['diffDir']]['sleuth']
 
-        # Start a new docker container.
-        cmd = 'Rscript {} {}'.format(shiny_script, so_path)
-        volumes = {
-            data_volume: {'bind': data_path, 'mode': 'rw'},
-            script_volume: {'bind': script_path, 'mode': 'rw'}
-        }
-        environment = {
-            'PARSE_HOSTNAME': PARSE_HOSTNAME,
-            'PARSE_APP_ID': PARSE_APP_ID,
-            'PARSE_MASTER_KEY': PARSE_MASTER_KEY
-        }
-        wdir = script_path
-        name = 'shiny-{}'.format(project.objectId)
+    # Start a new docker container.
+    cmd = 'Rscript {} -p {} --alaska'.format(shiny_script, so_path)
+    volumes = {
+        data_volume: {'bind': data_path, 'mode': 'rw'},
+        script_volume: {'bind': script_path, 'mode': 'rw'}
+    }
+    environment = {
+        'PARSE_HOSTNAME': PARSE_HOSTNAME,
+        'PARSE_APP_ID': PARSE_APP_ID,
+        'PARSE_MASTER_KEY': PARSE_MASTER_KEY
+    }
+    ports = {
+        42427: port
+    }
+    wdir = script_path
+    name = 'shiny-{}'.format(project.objectId)
 
-        # Docker client.
-        client = docker.from_env()
-        container = client.containers.run('alaska-diff', cmd, detach=True,
-                                          auto_remove=True, volumes=volumes,
-                                          working_dir=wdir, network=network,
-                                          environment=environment, name=name)
+    # Docker client.
+    client = docker.from_env()
+    container = client.containers.run('alaska-diff', cmd, detach=True,
+                                      auto_remove=True, volumes=volumes,
+                                      working_dir=wdir, network=network,
+                                      environment=environment, name=name,
+                                      ports=ports)
+
+    return jsonify({'result': {'id': container.id, 'name': name}})
+
+def _project_sleuth_close(objectId):
+    # Get shiny from server.
+    Shiny = Object.factory('Shiny')
+    shiny = Shiny.Query.get(objectId=objectId)
+
+    container_id = shiny.id
+    container_name = shiny.name
+
+    # Docker client.
+    client = docker.from_env()
+    try:
+        container = client.containers.get(container_id)
+        container.stop(3)
+        return jsonify({'result': 'stopped'})
+    except docker.errors.NotFound:
+        return jsonify({'result': 'not found'})
+
 
 def _project_reads(objectId):
     # Get project from server.
@@ -500,6 +632,65 @@ def _sample_initialize(projId, objectId, name):
             paths[analysis.code] = source_path
 
     return jsonify({'result': {'paths': paths}})
+
+@app.route('/project/<objectId>/email', methods=['POST'])
+def project_email(objectId):
+    try:
+        data = request.get_json()
+        subject = data['subject']
+        message = data['message']
+        return _project_email(objectId, subject, message)
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
+
+def _project_email(objectId, subject, message):
+    """
+    Send mail with the given arguments.
+    """
+    Project = Object.factory('Project')
+    project = Project.Query.get(objectId=objectId)
+
+    datetime = (dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                + ' Pacific Time')
+    url = 'http://alaska.caltech.edu/?id=' + objectId
+    fr = '{}@alaska.caltech.edu'.format(objectId)
+    to = project.email
+
+    # Footer that is appended to every email.
+    full_msg = '\
+    <html> \
+        <head></head> \
+        <body> \
+         <p>{}</p> \
+         <br> \
+         <hr> \
+         <p>Project ID: {}<br> \
+         Unique URL: <a href="{}">{}</a><br> \
+         FTP server: alaska.caltech.edu<br> \
+         FTP port: 21<br> \
+         FTP username: {}<br> \
+         FTP password: {}<br> \
+         This message was sent to {} at {}.<br> \
+         <b>Please do not reply to this email.</b></p> \
+        </body> \
+    </html> \
+    '.format(message, objectId, url, url, objectId, project.ftpPassword, to, datetime)
+
+    msg = MIMEText(full_msg, 'html')
+    msg['Subject'] = subject
+    msg['From'] = fr
+    conn = None
+    try:
+        conn = smtplib.SMTP('localhost')
+        conn.sendmail(fr, to, msg.as_string())
+    except Exception as e:
+        traceback.print_exc()
+    finally:
+        if conn is not None:
+            conn.quit()
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

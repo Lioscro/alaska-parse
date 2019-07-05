@@ -13,9 +13,12 @@ var samples;
 var reads;
 var organisms;
 var jobs;
+var jobRows;
 var jobOrder;
+var jobIntervals;
 
 var progress;
+var progressInterval = -1;
 
 var projectForm;
 var commonForm;
@@ -96,7 +99,11 @@ function _showErrorModal(message) {
   var modal = $('#error_modal');
   var output = modal.find('#error_output');
 
-  output.text(String(message));
+  if (typeof(message) == 'object') {
+    output.text(message.message.error);
+  } else {
+    output.text(message);
+  }
 
   modal.modal('show');
 
@@ -360,6 +367,11 @@ function _loadAll(objectId, callback = function () {}) {
 function _showLoadingSpinner(button) {
   button.prop('disabled', true);
   button.addClass('running');
+}
+
+function _hideLoadingSpinner(button) {
+  button.prop('disabled', false);
+  button.removeClass('running');
 }
 
 /**
@@ -1090,7 +1102,6 @@ function showMetaInput(callback = function () {}) {
       });
 
       // Show meta input.
-      $('#progress_bar_container').show();
       $('#meta_container').show();
       $('#proj_meta_header').show();
       $('#proj_meta').show();
@@ -1146,11 +1157,221 @@ function _setupOrganisms(inputs) {
   set_organisms_inputs_listeners(genus_select, species_select, version_select);
 }
 
+function _sendHtmlRequest(method, url, callback) {
+  $.ajax({
+    url: url,
+    type: method,
+    success: function (response) {
+      console.log(response);
+      callback(response);
+    }, function (error) {
+      _showErrorModal(error);
+    }
+  })
+}
+
+function openMultiQcReport() {
+  window.open(`webhook/project/${project.id}/file/qc/multiqc`, '_blank');
+}
+
+function openPopup(url) {
+  var win = window.open(url, '_blank');
+
+  // Check if popup has been blocked. If it has, notify the user
+  // to allow popups, or to click on a link that will direct them to the
+  // sleuth page.
+  if (win == null || typeof(win) == 'undefined') {
+    var modal = $('#popup_modal');
+    url_element = modal.find('#sleuth_url');
+    url_element.text(url);
+    url_element.attr('href', url);
+
+    modal.modal('show');
+  }
+}
+
+function openSleuthServer(callback = function () {}) {
+  _runCloudFunction('openSleuth', function (response) {
+    console.log(response);
+    const port = response.port;
+    const wait = response.wait;
+    const url = 'http://' + window.location.hostname + ':' + port + '/';
+
+    setTimeout(function () {
+      openPopup(url);
+      callback();
+    }, wait);
+
+  }, {objectId: project.id})
+}
+
+async function _setProjectProgress() {
+  var badge = $('#project_status_badge');
+  badge.removeClass('badge-secondary badge-info badge-success badge-danger');
+  badge.removeClass('flash animated infinite');
+
+  var status = project.get('status');
+  badge.text(status);
+
+  switch (status) {
+    case 'queued':
+      badge.addClass('badge-secondary');
+      break;
+    case 'running':
+      badge.addClass('badge-info flash animated infinite');
+      break;
+    case 'success':
+      badge.addClass('badge-success');
+      clearInterval(progressInterval);
+      $('#all_download_btn').prop('disabled', false);
+      break;
+    case 'error':
+      badge.addClass('badge-danger');
+      clearInterval(progressInterval);
+      $('#retry_btn').show();
+      break;
+    default:
+      _showErrorModal(`Unknown project status ${status}`);
+  }
+
+  // Loop through each job.
+  for (var code in jobs) {
+    var job = jobs[code];
+    var status = job.get('status');
+
+    if (status == 'error') {
+      badge.addClass('badge-warning');
+      badge.text('error');
+      break;
+    } else if (status == 'running') {
+      badge.addClass('badge-info');
+
+    }
+  }
+}
+
+async function _setRowProgress(code) {
+  var infoRow = jobRows[code];
+
+  const btns = infoRow.find('button');
+  const outputBtn = infoRow.find('.output_btn');
+  const downloadBtn = infoRow.find('.download_btn');
+  const auxilaryBtn = infoRow.find('.auxilary_btn');
+  const infoBadge = infoRow.find('.info_badge');
+
+  infoBadge.removeClass('badge-secondary badge-info badge-success badge-danger badge-warning');
+  infoBadge.removeClass('flash animated infinite')
+  btns.prop('disabled', true);
+
+  if (!(code in jobs)) {
+    infoBadge.addClass('badge-warning');
+    infoBadge.text('job not found');
+    return;
+  }
+
+  // Update job.
+  var job = await jobs[code].fetch();
+  jobs[code] = job;
+
+  var status = job.get('status');
+  infoBadge.text(status);
+
+  switch (status) {
+    case 'queued':
+      infoBadge.addClass('badge-secondary');
+      break;
+    case 'running':
+      infoBadge.addClass('badge-info flash animated infinite');
+      outputBtn.prop('disabled', false);
+      break;
+    case 'success':
+      infoBadge.addClass('badge-success');
+      btns.prop('disabled', false);
+      clearInterval(jobIntervals[code]);
+      break;
+    case 'error':
+      infoBadge.addClass('badge-danger');
+      outputBtn.prop('disabled', false);
+      clearInterval(jobIntervals[code]);
+      break;
+    default:
+      _showErrorModal(`Unknown job status ${status}`);
+  }
+}
+
+function _setupProgressRow(code, infoRow, outputRow) {
+  const outputBtn = infoRow.find('.output_btn');
+  const downloadBtn = infoRow.find('.download_btn');
+  const auxilaryBtn = infoRow.find('.auxilary_btn');
+  const infoBadge = infoRow.find('.info_badge');
+  const outputCollapse = outputRow.find('.output_collapse');
+  const outputTextarea = outputRow.find('.output_textarea');
+  const outputUl = outputRow.find('.output_ul');
+
+  // Switch for the code. As of now, it is hacky.
+  // TODO: update this to be dynamic.
+  switch (code) {
+    case 'qc':
+      // Setup multiqc report button listener.
+      auxilaryBtn.click(openMultiQcReport);
+      break;
+    case 'quant':
+      break;
+    case 'diff':
+      auxilaryBtn.click(function () {
+        var btn = $(this);
+        _showLoadingSpinner(btn);
+        openSleuthServer(function () {
+          _hideLoadingSpinner(btn);
+        });
+      });
+      break;
+    case 'post':
+      break;
+    default:
+      _showErrorModal(`Unknown analysis code ${code}`);
+  }
+
+  // Setup output row.
+  set_output_listener_for_collapse(code, outputCollapse, outputTextarea, outputUl, infoBadge);
+
+  // Setup Download results button.
+  downloadBtn.click({code: code}, function (e) {
+    var code = e.data.code;
+    window.open(`webhook/project/${project.id}/file/${code}/archive`, '_blank');
+  });
+}
+
+function _pollProject() {
+  _setProjectProgress();
+
+  clearInterval(progressInterval);
+  progressInterval = setInterval(_refetchProject, 5000, _setProjectProgress);
+}
+
+function _pollJobs() {
+  for (var code in jobRows) {
+    _setRowProgress(code);
+
+    if (code in jobIntervals) {
+      clearInterval(jobIntervals[code]);
+    }
+    jobIntervals[code] = setInterval(_setRowProgress, 3000, code);
+  }
+}
+
+function downloadCitation() {
+  window.open(`webook/project/${project.id}/file/citation`, '_blank');
+}
+
+function downloadProject() {
+  window.open(`webhook/project/${project.id}/file/archive`, '_blank');
+}
+
 /**
  * Show the progress page.
  */
 function showProgress() {
-  $('#progress_bar_container').show();
   var progress_container = $('#progress_container');
   var html = progress_container.html();
   progress_container.html(html.replace(new RegExp('PROJECT_ID', 'g'), project.id));
@@ -1196,47 +1417,31 @@ function showProgress() {
 
       modal.modal('hide');
     });
-    if (project_progress_interval == null) {
-      project_progress_interval = setInterval(update_progress, 10000);
-    }
+    _pollJobs();
+    _pollProject();
   });
 
-  // Set multiqc report button listener.
-  $('#qc_report_btn').click(function () {
-      window.open('multiqc_report.php?id=' + proj_id, '_blank');
-  });
+  progress_container.find('#info_download_btn').click(downloadCitation);
+  progress_container.find('#all_download_btn').click(downloadProject);
 
-  // Set download button listeners.
-  $('#qc_download_btn').click(function () {
-      window.open('download.php?id=' + proj_id + '&type=qc', '_blank');
-  });
-  $('#quant_download_btn').click(function () {
-      window.open('download.php?id=' + proj_id + '&type=quant', '_blank');
-  });
-  $('#diff_download_btn').click(function () {
-      window.open('download.php?id=' + proj_id + '&type=diff', '_blank');
-  });
-  $('#all_download_btn').click(function () {
-      window.open('download.php?id=' + proj_id + '&type=all', '_blank');
-  });
-  $('#info_download_btn').click(function () {
-      window.open('download.php?id=' + proj_id + '&type=info', '_blank');
-  });
+  // Set progress rows.
+  jobRows = {};
+  jobIntervals = {};
+  var infoRows = progress_container.find('.info_row');
+  var outputRows = progress_container.find('.output_row');
+  if (infoRows.length != outputRows.length) {
+    _showErrorModal('Progress and output row length mismatch');
+  }
+  for (var i = 0; i < infoRows.length; i++) {
+    var infoRow = infoRows.eq(i);
+    var outputRow = outputRows.eq(i);
+    var code = infoRow.data('code');
 
-  // Set sleuth server open button listener.
-  progress_container.find('#diff_server_btn').click(function () {
-    var target = 'cgi_request.php';
-    var data = {
-      id: proj_id,
-      action: 'open_sleuth_server'
-    };
-    var btn = $(this);
-    var spinner = btn.children('div:last');
-    var width = btn.width();
-    set_loading_spinner(btn, spinner);
-    var callback = parse_sleuth_server;
-    send_ajax_request(target, data, callback, true, btn, spinner, width);
-  });
+    jobRows[code] = infoRow;
+    _setupProgressRow(code, infoRow, outputRow);
+  }
+  _pollJobs();
+
 
   // Set compile button.
   progress_container.find('#geo_compile_btn').click(function () {
@@ -1309,16 +1514,8 @@ function showProgress() {
     }
   });
 
-  // Set output listeners for live output.
-  set_output_listeners(progress_container);
-
-  // Set the progress page to the given progress.
-  set_progress();
-
   // Then, call update_progress regularly.
-  if (project_progress_interval == null) {
-    project_progress_interval = setInterval(update_progress, 10000);
-  }
+  _pollProject();
 }
 
 
@@ -1380,7 +1577,6 @@ function goto_meta_input() {
  * Go to analysis progress page.
  */
 function goto_progress(status) {
-  $('#progress_bar_container').show();
   var progress_container = $('#progress_container');
   var html = progress_container.html();
   progress_container.html(html.replace(new RegExp('PROJECT_ID', 'g'), proj_id));
@@ -1534,9 +1730,9 @@ function goto_progress(status) {
   set_progress(status);
 
   // Then, call update_progress regularly.
-  if (project_progress_interval == null) {
-    project_progress_interval = setInterval(update_progress, 10000);
-  }
+  // if (project_progress_interval == null) {
+  //   project_progress_interval = setInterval(update_progress, 10000);
+  // }
 }
 
 function get_output(type, textarea, ul) {
@@ -1560,7 +1756,7 @@ function get_output(type, textarea, ul) {
   }, {objectId: jobs[type].id})
 }
 
-function set_output_listener_for_collapse(collapse, type, textarea, ul, badge,
+function set_output_listener_for_collapse(type, collapse, textarea, ul, badge,
                                           t=1000) {
   collapse.on('show.bs.collapse', {
     'type': type,
@@ -1804,23 +2000,18 @@ function set_progress() {
     set_progress_badge(elements.qc_status_badge, 'queued');
     set_progress_badge(elements.quant_status_badge, 'queued');
     set_progress_badge(elements.diff_status_badge, 'queued');
-    set_progress_bar_queued();
   } else if (status < progress.quant_started) {
     set_progress_badge(elements.quant_status_badge, 'queued');
     set_progress_badge(elements.diff_status_badge, 'queued');
-    set_progress_bar_qc();
   } else if (status < progress.diff_started) {
     set_progress_badge(elements.diff_status_badge, 'queued');
-    set_progress_bar_quant();
   } else {
-    set_progress_bar_diff();
   }
 
   if (status >= progress.diff_finished) {
     set_progress_badge(elements.qc_status_badge, 'finished');
     set_progress_badge(elements.quant_status_badge, 'finished');
     set_progress_badge(elements.diff_status_badge, 'finished');
-    set_progress_bar_done();
   } else if (status >= progress.quant_finished) {
     set_progress_badge(elements.qc_status_badge, 'finished');
     set_progress_badge(elements.quant_status_badge, 'finished');
@@ -1882,172 +2073,6 @@ function set_progress_badge(badge, state) {
       badge.addClass('badge-danger');
       badge.text('Error');
   }
-}
-
-/**
- * Set progress bar to queued.
- */
-function set_progress_bar_queued() {
-  var bar = $('#progress_bar');
-  var queued = bar.children('#queued');
-  var qc = bar.children('#qc');
-  var quant = bar.children('#quant');
-  var diff = bar.children('#diff');
-  var done = bar.children('#done');
-
-  bar.children().removeClass('progress-bar-striped progress-bar-animated');
-
-  // Set queued classes.
-  queued.removeClass('bg-secondary border-right border-dark');
-  queued.addClass('bg-dark progress-bar-striped progress-bar-animated');
-
-  // Set qc classes.
-  qc.removeClass('bg-warning');
-  qc.addClass('bg-secondary border-right border-dark');
-
-  // Set quant classes.
-  quant.removeClass('bg-info');
-  quant.addClass('bg-secondary border-right border-dark');
-
-  // Set diff classes.
-  diff.removeClass('bg-danger');
-  diff.addClass('bg-secondary border-right border-dark');
-
-  // Set done classes.
-  done.removeClass('bg-success');
-  done.addClass('bg-secondary');
-}
-
-/**
- * Set progress bar to quality control.
- */
-function set_progress_bar_qc() {
-  var bar = $('#progress_bar');
-  var queued = bar.children('#queued');
-  var qc = bar.children('#qc');
-  var quant = bar.children('#quant');
-  var diff = bar.children('#diff');
-  var done = bar.children('#done');
-
-  bar.children().removeClass('progress-bar-striped progress-bar-animated');
-
-  // Set queued classes.
-  queued.removeClass('bg-secondary border-right border-dark');
-  queued.addClass('bg-dark');
-
-  // Set qc classes.
-  qc.removeClass('bg-secondary border-right border-dark');
-  qc.addClass('bg-warning progress-bar-striped progress-bar-animated');
-
-  // Set quant classes.
-  quant.removeClass('bg-info');
-  quant.addClass('bg-secondary border-right border-dark');
-
-  // Set diff classes.
-  diff.removeClass('bg-danger');
-  diff.addClass('bg-secondary border-right border-dark');
-
-  // Set done classes.
-  done.removeClass('bg-success');
-  done.addClass('bg-secondary');
-}
-
-/**
- * Set progress bar to alignment & quantification.
- */
-function set_progress_bar_quant() {
-  var bar = $('#progress_bar');
-  var queued = bar.children('#queued');
-  var qc = bar.children('#qc');
-  var quant = bar.children('#quant');
-  var diff = bar.children('#diff');
-  var done = bar.children('#done');
-
-  bar.children().removeClass('progress-bar-striped progress-bar-animated');
-
-  // Set queued classes.
-  queued.removeClass('bg-secondary border-right border-dark');
-  queued.addClass('bg-dark');
-
-  // Set qc classes.
-  qc.removeClass('bg-secondary border-right border-dark');
-  qc.addClass('bg-warning');
-
-  // Set quant classes.
-  quant.removeClass('bg-secondary border-right border-dark');
-  quant.addClass('bg-info progress-bar-striped progress-bar-animated');
-
-  // Set diff classes.
-  diff.removeClass('bg-danger');
-  diff.addClass('bg-secondary border-right border-dark');
-
-  // Set done classes.
-  done.removeClass('bg-success');
-  done.addClass('bg-secondary');
-}
-
-/**
- * Set progress bar to diff exp
- */
-function set_progress_bar_diff() {
-  var bar = $('#progress_bar');
-  var queued = bar.children('#queued');
-  var qc = bar.children('#qc');
-  var quant = bar.children('#quant');
-  var diff = bar.children('#diff');
-  var done = bar.children('#done');
-
-  bar.children().removeClass('progress-bar-striped progress-bar-animated');
-
-  // Set queued classes.
-  queued.removeClass('bg-secondary border-right border-dark');
-  queued.addClass('bg-dark');
-
-  // Set qc classes.
-  qc.removeClass('bg-secondary border-right border-dark');
-  qc.addClass('bg-warning');
-
-  // Set quant classes.
-  quant.removeClass('bg-secondary border-right border-dark');
-  quant.addClass('bg-info');
-
-  // Set diff classes.
-  diff.removeClass('bg-secondary border-right border-dark');
-  diff.addClass('bg-danger progress-bar-striped progress-bar-animated');
-
-  // Set done classes.
-  done.removeClass('bg-success');
-  done.addClass('bg-secondary');
-}
-
-/**
- * Set progress bar to done.
- */
-function set_progress_bar_done() {
-  var bar = $('#progress_bar');
-  var queued = bar.children('#queued');
-  var qc = bar.children('#qc');
-  var quant = bar.children('#quant');
-  var diff = bar.children('#diff');
-  var done = bar.children('#done');
-
-  bar.children().removeClass('progress-bar-striped progress-bar-animated');
-  bar.children().removeClass('bg-secondary border-right border-dark');
-
-  // Set queued classes.
-  queued.addClass('bg-dark');
-
-  // Set qc classes.
-  qc.addClass('bg-warning');
-
-  // Set quant classes.
-  quant.addClass('bg-info');
-
-  // Set diff classes.
-  diff.addClass('bg-danger');
-
-  // Set done classes.
-  done.addClass('bg-success');
 }
 
 /**

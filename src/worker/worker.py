@@ -87,6 +87,9 @@ def start():
                                                                project.objectId),
                       flush=True)
 
+                project.status = 'running'
+                project.save()
+
                 # Make directory if it doesn't exist.
                 if analysis.code not in project.paths:
                     path = os.path.join(project.paths['root'], analysis.code)

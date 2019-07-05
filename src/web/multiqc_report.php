@@ -6,7 +6,7 @@ if (isset($_GET['id'])) {
   throw new Exception("id not given");
 }
 # construct path to file
-$path = "/alaska/root/projects/" . $id . "/1_qc/multiqc_report.html";
+$path = "/alaska/data/projects/" . $id . "/qc/multiqc_report.html";
 # Sanity check, and then read.
 if (is_readable($path)) {
   header('Content-Type: text/html');

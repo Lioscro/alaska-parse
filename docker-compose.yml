@@ -1,6 +1,16 @@
 version: "2.4"
 
 services:
+  # Python poller to be able to send emails via the host network.
+  email:
+    image: python:3
+    restart: always
+    working_dir: /email
+    command: python3 poller.py /alaska/data/email -i 5
+    volumes:
+      - ./src/email:/email
+      - data:/alaska/data
+    network_mode: host
   # MongoDB
   mongo:
     image: mongo:xenial
@@ -34,6 +44,8 @@ services:
       - data:/alaska/data
       - scripts:/alaska/scripts
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - parse-server
     networks:
       - backend
   # Worker server
@@ -67,6 +79,8 @@ services:
       - "80:80"
     volumes:
       - ./src/web:/usr/share/nginx/html:ro
+      - data:/alaska/data
+      - ./docker/nginx:/etc/nginx/conf.d:ro
     depends_on:
       - parse-server
     networks:

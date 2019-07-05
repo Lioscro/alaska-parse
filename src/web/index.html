@@ -84,41 +84,7 @@
       </div>
     </div>
   </nav>
-  <div class="container"
-       id="progress_bar_container"
-       style="margin-top:5em;margin-bottom:2em;display:none">
-    <div class="progress"
-         style="height:1.8em"
-         id="progress_bar">
-      <div class="progress-bar bg-success"
-           role="progressbar"
-           style="width: 20%">Upload reads</div>
-      <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
-           role="progressbar"
-           style="width: 20%">Fill out metadata</div>
-      <div class="progress-bar bg-secondary border-right border-dark"
-           role="progressbar"
-           style="width: 5%"
-           id="queued">Queued</div>
-      <div class="progress-bar bg-secondary border-right border-dark"
-           role="progressbar"
-           style="width: 17%"
-           id="qc">Quality control</div>
-      <div class="progress-bar bg-secondary border-right border-dark"
-           role="progressbar"
-           style="width: 18%"
-           id="quant">Alignment &amp; quantification</div>
-      <div class="progress-bar bg-secondary border-right border-dark"
-           role="progressbar"
-           style="width: 20%"
-           id="diff">Differential expression analysis</div>
-      <div class="progress-bar bg-secondary"
-           role="progressbar"
-           style="width: 10%"
-           id="done">Done!</div>
-    </div>
-  </div>
-  <div class="container"
+  <div class="container mt-5 pt-4"
        id="progress_container"
        style="display:none">
     <div>
@@ -170,89 +136,91 @@
                   <th style="width:30%">Analysis Step</th>
                   <th style="width:12%">Status</th>
                   <th>Results</th>
-                  <th style="width:15%"></th>
+                  <th style="width:18%"></th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td class="align-middle">1</td>
-                  <td class="align-middle">Quality Control</td>
-                  <td class="align-middle">
-                    <span class="badge badge-pill badge-secondary mr-1"
-                          id="qc_status_badge">Queued</span>
-                  </td>
-                  <td class="align-middle">
-                    <button class="btn btn-info btn-sm"
-                            type="button"
-                            data-toggle="collapse"
-                            data-target="#qc_output_collapse"
-                            id="qc_output_btn"
-                            disabled>View live output</button>
-                    <button class="btn btn-success btn-sm"
-                            type="button"
-                            id="qc_report_btn"
-                            disabled><i class="fas fa-external-link-alt mr-1"></i>View
-                      MultiQC report</button>
-                  </td>
-                  <td class="align-middle">
-                    <button class="btn btn-secondary btn-sm"
-                            type="button"
-                            id="qc_download_btn"
-                            disabled><i class="fas fa-download mr-1"></i>Download
-                      results</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="5"
-                      class="align-middle bg-secondary border-white p-0">
-                    <div class="collapse m-3 p-0 text-light"
-                         id="qc_output_collapse">
-                      <!-- Div to display all the commands that have been
-                           run. -->
-                      <div>
-                        <h4 class="mb-0">Commands</h4>
-                        <small>
-                          This is the list of all commands run by the server.
-                        </small>
-                        <ul id="qc_list" style="font-size:0.8em">
-                        </ul>
+                <div id="testing">
+                  <tr class="info_row" data-code="qc">
+                    <td class="align-middle">1</td>
+                    <td class="align-middle">Quality Control</td>
+                    <td class="align-middle">
+                      <span class="badge badge-pill badge-secondary mr-1 info_badge"
+                            id="qc_status_badge">Queued</span>
+                    </td>
+                    <td class="align-middle">
+                      <button class="btn btn-info btn-sm output_btn"
+                              type="button"
+                              data-toggle="collapse"
+                              data-target="#qc_output_collapse"
+                              id="qc_output_btn"
+                              disabled>View live output</button>
+                      <button class="btn btn-success btn-sm auxilary_btn"
+                              type="button"
+                              id="qc_report_btn"
+                              disabled><i class="fas fa-external-link-alt mr-1"></i>View
+                        MultiQC report</button>
+                    </td>
+                    <td class="align-middle float-right">
+                      <button class="btn btn-secondary btn-sm download_btn"
+                              type="button"
+                              id="qc_download_btn"
+                              disabled><i class="fas fa-download mr-1"></i>Download
+                        results</button>
+                    </td>
+                  </tr>
+                  <tr class="output_row">
+                    <td colspan="5"
+                        class="align-middle bg-secondary border-white p-0">
+                      <div class="collapse m-3 p-0 text-light output_collapse"
+                           id="qc_output_collapse">
+                        <!-- Div to display all the commands that have been
+                             run. -->
+                        <div>
+                          <h4 class="mb-0">Commands</h4>
+                          <small>
+                            This is the list of all commands run by the server.
+                          </small>
+                          <ul class="output_ul" id="qc_list" style="font-size:0.8em">
+                          </ul>
+                        </div>
+                        <div>
+                          <h4>Live output</h4>
+                          <textarea class="form-control text-monospace output_textarea"
+                                    rows="20"
+                                    id="qc_textarea"
+                                    style="font-size:0.8em"
+                                    readonly></textarea>
+                        </div>
                       </div>
-                      <div>
-                        <h4>Live output</h4>
-                        <textarea class="form-control text-monospace"
-                                  rows="20"
-                                  id="qc_textarea"
-                                  style="font-size:0.8em"
-                                  readonly></textarea>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
+                    </td>
+                  </tr>
+                </div>
+                <tr class="info_row" data-code="quant">
                   <td class="align-middle">2</td>
                   <td class="align-middle">Alignment &amp; Quantification</td>
-                  <td class="align-middle"><span class="badge badge-pill badge-secondary"
+                  <td class="align-middle"><span class="badge badge-pill badge-secondary info_badge"
                           id="quant_status_badge">Queued</span></td>
                   <td class="align-middle">
-                    <button class="btn btn-info btn-sm"
+                    <button class="btn btn-info btn-sm output_btn"
                             type="button"
                             data-toggle="collapse"
                             data-target="#quant_output_collapse"
                             id="quant_output_btn"
                             disabled>View live output</button>
                   </td>
-                  <td class="align-middle">
-                    <button class="btn btn-secondary btn-sm"
+                  <td class="align-middle float-right">
+                    <button class="btn btn-secondary btn-sm download_btn"
                             type="button"
                             id="quant_download_btn"
                             disabled><i class="fas fa-download mr-1"></i>Download
                       results</button>
                   </td>
                 </tr>
-                <tr>
+                <tr class="output_row">
                   <td colspan="5"
                       class="align-middle bg-secondary border-white p-0">
-                    <div class="collapse m-3 p-0 text-light"
+                    <div class="collapse m-3 p-0 text-light output_collapse"
                          id="quant_output_collapse">
                          <!-- Div to display all the commands that have been
                               run. -->
@@ -261,12 +229,12 @@
                            <small>
                              This is the list of all commands run by the server.
                            </small>
-                           <ul id="quant_list" style="font-size:0.8em">
+                           <ul class="output_ul" id="quant_list" style="font-size:0.8em">
                            </ul>
                          </div>
                          <div>
                            <h4>Live output</h4>
-                           <textarea class="form-control text-monospace"
+                           <textarea class="form-control text-monospace output_textarea"
                                      rows="20"
                                      id="quant_textarea"
                                      style="font-size:0.8em"
@@ -275,41 +243,39 @@
                     </div>
                   </td>
                 </tr>
-                <tr>
+                <tr class="info_row" data-code="diff">
                   <td class="align-middle">3</td>
                   <td class="align-middle">Differential Expression Analysis</td>
-                  <td class="align-middle"><span class="badge badge-pill badge-secondary"
+                  <td class="align-middle"><span class="badge badge-pill badge-secondary info_badge"
                           id="diff_status_badge">Queued</span></td>
                   <td class="align-middle">
-                    <button class="btn btn-info btn-sm"
+                    <button class="btn btn-info btn-sm output_btn"
                             type="button"
                             data-toggle="collapse"
                             data-target="#diff_output_collapse"
                             id="diff_output_btn"
                             disabled>View live output</button>
-                    <button class="btn btn-success btn-sm align-items-center d-inline-flex"
+                    <button class="btn btn-success btn-sm align-items-center d-inline-flex auxilary_btn ld-ext-right"
                             type="button"
                             id="diff_server_btn"
                             disabled>
                       <i class="fas fa-external-link-alt mr-1"></i>
                       Open Sleuth web server
-                      <div id="sleuth_loading_spinner"
-                           class="spinner-light ml-2"
-                           style="height:1em;width:1em;display:none"></div>
+                      <div class="ld ld-ring ld-spin"></div>
                     </button>
                   </td>
-                  <td class="align-middle">
-                    <button class="btn btn-secondary btn-sm"
+                  <td class="align-middle float-right">
+                    <button class="btn btn-secondary btn-sm download_btn"
                             type="button"
                             id="diff_download_btn"
                             disabled><i class="fas fa-download mr-1"></i>Download
                       results</button>
                   </td>
                 </tr>
-                <tr>
+                <tr class="output_row">
                   <td colspan="5"
                       class="align-middle bg-secondary border-white p-0">
-                    <div class="collapse m-3 p-0"
+                    <div class="collapse m-3 p-0 text-light output_collapse"
                          id="diff_output_collapse">
                          <!-- Div to display all the commands that have been
                               run. -->
@@ -318,17 +284,66 @@
                            <small>
                              This is the list of all commands run by the server.
                            </small>
-                           <ul id="diff_list" style="font-size:0.8em">
+                           <ul class="output_ul" id="diff_list" style="font-size:0.8em">
                            </ul>
                          </div>
                          <div>
                            <h4>Live output</h4>
-                           <textarea class="form-control text-monospace"
+                           <textarea class="form-control text-monospace output_textarea"
                                      rows="20"
                                      id="diff_textarea"
                                      style="font-size:0.8em"
                                      readonly></textarea>
                          </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr class="info_row" data-code="post">
+                  <td class="align-middle">4</td>
+                  <td class="align-middle">Post Analysis</td>
+                  <td class="align-middle">
+                    <span class="badge badge-pill badge-secondary mr-1 info_badge"
+                          id="post_status_badge">Queued</span>
+                  </td>
+                  <td class="align-middle">
+                    <button class="btn btn-info btn-sm output_btn"
+                            type="button"
+                            data-toggle="collapse"
+                            data-target="#post_output_collapse"
+                            id="post_output_btn"
+                            disabled>View live output</button>
+                  </td>
+                  <td class="align-middle float-right">
+                    <button class="btn btn-secondary btn-sm download_btn"
+                            type="button"
+                            id="post_download_btn"
+                            disabled><i class="fas fa-download mr-1"></i>Download
+                      results</button>
+                  </td>
+                </tr>
+                <tr class="output_row">
+                  <td colspan="5"
+                      class="align-middle bg-secondary border-white p-0">
+                    <div class="collapse m-3 p-0 text-light output_collapse"
+                         id="post_output_collapse">
+                      <!-- Div to display all the commands that have been
+                           run. -->
+                      <div>
+                        <h4 class="mb-0">Commands</h4>
+                        <small>
+                          This is the list of all commands run by the server.
+                        </small>
+                        <ul class="output_ul" id="post_list" style="font-size:0.8em">
+                        </ul>
+                      </div>
+                      <div>
+                        <h4>Live output</h4>
+                        <textarea class="form-control text-monospace output_textarea"
+                                  rows="20"
+                                  id="post_textarea"
+                                  style="font-size:0.8em"
+                                  readonly></textarea>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -2815,7 +2830,8 @@
             encounter this issue again, please contact WormBase with your
             project ID and the server output below.</p>
           <textarea id="error_output"
-                    class="form-control text-monospace"
+                    class="form-control text-monospace text-sm"
+                    style="font-size:0.8em"
                     rows="10"
                     readonly></textarea>
         </div>

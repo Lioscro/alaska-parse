@@ -21,10 +21,15 @@ def archive_project(project, archive_file='full.tar.gz'):
     '''
     Archives the whole project.
     '''
+    print_with_flush('# archiving full project')
     archive_path = os.path.join(project.paths['root'], archive_file)
     with tarfile.open(archive_path, 'w:gz') as tar:
         for code, item in project.files.items():
+            if code == 'archive':
+                continue
             tar.add(project.paths[code])
+
+    print_with_flush('# done')
 
     return archive_path
 
