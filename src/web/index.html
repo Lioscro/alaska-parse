@@ -8,6 +8,7 @@
   <meta charset="utf-8">
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+  <link rel="icon" type="image/png" href="favicon.png" />
   <title>Alaska</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
   <link rel="stylesheet"
@@ -356,7 +357,7 @@
     <div id="geo_submission_div">
       <div class="row">
         <div class="col d-flex justify-content-center align-items-center"><button
-                  class="btn btn-primary d-flex align-items-center"
+                  class="btn btn-primary d-flex align-items-cente ld-ext-right"
                   type="button"
                   style="border-radius:24px"
                   data-toggle="modal"
@@ -364,21 +365,20 @@
                   data-target="#geo_compile_modal"
                   disabled>
             Compile Project for Submission
-            <div class="spinner-light ml-3 loading_spinner"
-                 style="display:none"></div>
+            <div class="ld ld-ring ld-spin"></div>
             <div class="ml-3 success_check"
                  style="display:none">
               <svg version="1.1"
                    xmlns="http://www.w3.org/2000/svg"
                    viewBox="0 0 130.2 130.2">
-                <circle class="path circle"
+                <!-- <circle class="path circle"
                         fill="none"
                         stroke="#97e570"
                         stroke-width="14"
                         stroke-miterlimit="10"
                         cx="65.1"
                         cy="65.1"
-                        r="62.1" />
+                        r="62.1" /> -->
                 <polyline class="path check"
                           fill="none"
                           stroke="#97e570"
@@ -429,7 +429,7 @@
       </div>
       <div class="row mt-2">
         <div class="col d-flex justify-content-center align-items-center"><button
-                  class="btn btn-success btn-lg d-flex align-items-center"
+                  class="btn btn-success btn-lg d-flex align-items-center ld-ext-right"
                   type="button"
                   style="border-radius:24px"
                   data-toggle="modal"
@@ -437,21 +437,20 @@
                   data-target="#geo_submit_modal"
                   disabled>
             Submit Project to GEO
-            <div class="spinner-light ml-3 loading_spinner"
-                 style="display:none"></div>
+            <div class="ld ld-ring ld-spin"></div>
             <div class="ml-3 success_check"
                  style="display:none">
               <svg version="1.1"
                    xmlns="http://www.w3.org/2000/svg"
                    viewBox="0 0 130.2 130.2">
-                <circle class="path circle"
+                <!-- <circle class="path circle"
                         fill="none"
                         stroke="#97e570"
                         stroke-width="14"
                         stroke-miterlimit="10"
                         cx="65.1"
                         cy="65.1"
-                        r="62.1" />
+                        r="62.1" /> -->
                 <polyline class="path check"
                           fill="none"
                           stroke="#97e570"
@@ -503,13 +502,11 @@
                     </div>
                   </form>
                   <p>Alaska also needs your GEO FTP information. Please login
-                    to GEO and go to the <a href="https://www.ncbi.nlm.nih.gov/geo/submission/depslip.cgi"
-                       target="_blank">Direct Deposit form</a>. At the bottom
-                    of the form, click on the <strong>FTP instructions</strong>
-                    link to show instructions on how to upload via FTP (Don't
-                    worry, we'll do this for you!) Scroll down to the <strong>GEO
-                      FTP login information</strong> header. Please copy and
-                    paste the login information below.</p>
+                    to GEO and go to the <a href="https://www.ncbi.nlm.nih.gov/geo/info/submissionftp.html"
+                       target="_blank">GEO File Transfer Protocol (FTP)</a>.
+                       Scroll down to the <strong>FTP server credentials</strong> header.
+                       Please copy and paste the login information below. You need
+                       to be logged in to GEO to view this information.</p>
                   <form novalidate>
                     <div class="form-group row ftp_host_group">
                       <div class="col-sm-4">
@@ -2322,23 +2319,17 @@
               <h5 class="card-header">2. Preparing your reads for upload</h5>
               <div class="card-body">
                 <p class="card-text">Alaska accepts <mark><code>.fastq</code></mark>
-                  or <mark><code>.fastq.gz</code></mark> files in both
-                  compressed or non-compressed folders. The recommended
-                  compression format for folders is <mark><code>.tar.gz</code></mark>.
-                  For more information on supported formats, please check our
-                  FAQ page <a class="text-warning"
-                     href="faq.html#faq_extensions"
-                     target="_blank">here</a>.</p>
-                <p class="card-text"><strong>Please make sure your samples are
-                    in one of the supported directory structures!</strong></p>
+                  or <mark><code>.fastq.gz</code></mark> files in non-compressed folders.
+                  Each sample must have their own folder with its reads.</p>
+                <p class="card-text"><strong>Please make sure your submission has
+                  the correct directory structure!</strong></p>
                 <p class="card-text text-center">
                   <!--See example button trigger for modal-->
                   <button id="read_example_btn"
                           class="btn btn-warning mt-2"
                           type="button"
                           data-toggle="modal"
-                          data-target="#read_example_modal">View supported
-                    structures</button>
+                          data-target="#read_example_modal">View example submission</button>
                 </p>
                 <!--Read example modal-->
                 <div class="modal fade"
@@ -2350,7 +2341,7 @@
                     <div class="modal-content">
                       <div class="modal-header alert-warning">
                         <h5 class="modal-title"><i class="fa fa-file mr-2"></i>Valid
-                          submission examples</h5>
+                          submission example</h5>
                       </div>
                       <div class="modal-body text-dark">
                         <div class="alert alert-warning">
@@ -2363,34 +2354,11 @@
                         <p>For all the examples, we are working with a project
                           with 2 samples, with 4 read files each (for a total
                           of 8 read files).</p>
-                        <h5>Without folders</h5>
-                        <p>You will prepare 2 archives, one for each sample,
-                          containing all the reads for their corresponding
-                          sample. Here is what it would look like.</p>
-                        <div class="d-flex justify-content-center">
-                          <ul class="fa-ul text-monospace"
-                              style="list-style:none;font-size:0.8em">
-                            <li><i class="fa fa-li fa-file-archive"></i>sample_1_archive.tar.gz</li>
-                            <ul class="fa-ul">
-                              <li><i class="fa fa-li fa-file"></i>sample_1_read_1.fastq.gz</li>
-                              <li><i class="fa fa-li fa-file"></i>sample_1_read_2.fastq.gz</li>
-                              <li><i class="fa fa-li fa-file"></i>sample_1_read_3.fastq.gz</li>
-                              <li><i class="fa fa-li fa-file"></i>sample_1_read_4.fastq.gz</li>
-                            </ul>
-                            <li><i class="fa fa-li fa-file-archive"></i>sample_2_archive.tar.gz</li>
-                            <ul class="fa-ul">
-                              <li><i class="fa fa-li fa-file"></i>sample_2_read_1.fastq.gz</li>
-                              <li><i class="fa fa-li fa-file"></i>sample_2_read_2.fastq.gz</li>
-                              <li><i class="fa fa-li fa-file"></i>sample_2_read_3.fastq.gz</li>
-                              <li><i class="fa fa-li fa-file"></i>sample_2_read_4.fastq.gz</li>
-                            </ul>
-                          </ul>
-                        </div>
-                        <hr>
-                        <h5>With non-compressed folders</h5>
+                        <h5>Instructions</h5>
                         <p>You will prepare 2 folders, one for each sample,
                           containing all the reads for their corresponding
-                          sample. Here is what it would look like.</p>
+                          sample. No other form of submission is accepted.
+                          Here is what it would look like.</p>
                         <div class="d-flex justify-content-center">
                           <ul class="fa-ul text-monospace"
                               style="list-style:none;font-size:0.8em">
@@ -2407,34 +2375,6 @@
                               <li><i class="fa fa-li fa-file"></i>sample_2_read_2.fastq.gz</li>
                               <li><i class="fa fa-li fa-file"></i>sample_2_read_3.fastq.gz</li>
                               <li><i class="fa fa-li fa-file"></i>sample_2_read_4.fastq.gz</li>
-                            </ul>
-                          </ul>
-                        </div>
-                        <hr>
-                        <h5>With compressed folders</h5>
-                        <p>You will prepare 1 archive, containing 2 folders,
-                          one for each sample, containing all the reads for
-                          their corresponding sample. Here is what it would
-                          look like.</p>
-                        <div class="d-flex justify-content-center">
-                          <ul class="fa-ul text-monospace"
-                              style="list-style:none;font-size:0.8em">
-                            <li><i class="fa fa-li fa-file-archive"></i>all_samples_archive.tar.gz</li>
-                            <ul class="fa-ul">
-                              <li><i class="fa fa-li fa-folder-open"></i>sample_1_folder</li>
-                              <ul class="fa-ul">
-                                <li><i class="fa fa-li fa-file"></i>sample_1_read_1.tar.gz</li>
-                                <li><i class="fa fa-li fa-file"></i>sample_1_read_1.tar.gz</li>
-                                <li><i class="fa fa-li fa-file"></i>sample_1_read_1.tar.gz</li>
-                                <li><i class="fa fa-li fa-file"></i>sample_1_read_1.tar.gz</li>
-                              </ul>
-                              <li><i class="fa fa-li fa-folder-open"></i>sample_2_folder</li>
-                              <ul class="fa-ul">
-                                <li><i class="fa fa-li fa-file"></i>sample_2_read_1.tar.gz</li>
-                                <li><i class="fa fa-li fa-file"></i>sample_2_read_1.tar.gz</li>
-                                <li><i class="fa fa-li fa-file"></i>sample_2_read_1.tar.gz</li>
-                                <li><i class="fa fa-li fa-file"></i>sample_2_read_1.tar.gz</li>
-                              </ul>
                             </ul>
                           </ul>
                         </div>

@@ -1,14 +1,17 @@
 import os
 import sys
 import re
+import time
 import json
 import random
+import signal
 import string
 import docker
 import shutil
 import hashlib
 import traceback
 import datetime as dt
+from threading import Thread
 
 # import docker
 from flask import Flask, request, jsonify, send_file, send_from_directory
@@ -30,6 +33,35 @@ from parse_rest.query import QueryResourceDoesNotExist
 from parse_rest.connection import ParseBatcher
 from parse_rest.core import ResourceRequestBadRequest, ParseError
 register(PARSE_APP_ID, '', master_key=PARSE_MASTER_KEY)
+
+sys.path.append(Config.get()['scriptPath'])
+from compile import compile
+from upload import upload
+
+compiling = {}
+uploading = {}
+def sigterm_handler(signal, frame):
+    print('SIGTERM received', file=sys.stderr, flush=True)
+    print(compiling, uploading, file=sys.stderr, flush=True)
+
+    Project = Object.factory('Project')
+
+    for objectId, t in compiling.items():
+        if t.is_alive():
+            project = Project.Query.get(objectId=objectId)
+            project.progress = 'success'
+            project.save()
+
+
+    for objectId, t in uploading.items():
+        if t.is_alive():
+            project = Project.Query.get(objectId=objectId)
+            project.progress = 'compiled'
+            project.save()
+
+
+# Handle SIGTERM gracefully.
+signal.signal(signal.SIGTERM, sigterm_handler)
 
 # Actual flask application.
 app = Flask(__name__)
@@ -244,6 +276,56 @@ def project_ftp(objectId):
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
 
+@app.route('/project/<objectId>/compile', methods=['POST'])
+def project_compile(objectId):
+    try:
+        if objectId in compiling and compiling[objectId].is_alive():
+            raise Exception('{} is already being compiled'.format(objectId))
+
+        Project = Object.factory('Project')
+        project = Project.Query.get(objectId=objectId)
+        project.progress = 'compiling'
+        project.save()
+
+        t = Thread(target=_project_compile, args=(project,))
+        t.daemon = True
+        compiling[objectId] = t
+        t.start()
+
+        return jsonify({'result':'compiling'})
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
+@app.route('/project/<objectId>/upload', methods=['POST'])
+def project_upload(objectId):
+    try:
+        data = request.get_json()
+        host = data['host']
+        username = data['username']
+        password = data['password']
+        geo_username = data['geo_username']
+
+        Project = Object.factory('Project')
+        project = Project.Query.get(objectId=objectId)
+        project.progress = 'uploading'
+        project.save()
+
+        if objectId in uploading and uploading[objectId].is_alive():
+            raise Exception('{} is already being uploaded'.format(objectId))
+
+        t = Thread(target=_project_upload, args=(project, host, username, password, geo_username,))
+        t.daemon = True
+        uploading[objectId] = t
+        t.start()
+
+        return jsonify({'result': 'uploading'})
+
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
+
 @app.route('/project/<objectId>/delete', methods=['POST'])
 def project_delete(objectId):
     try:
@@ -331,6 +413,14 @@ def sample_initialize(projId, objectId):
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
 
+@app.route('/sample/<objectId>/citation', methods=['POST'])
+def sample_citation(objectId):
+    try:
+        return _sample_citation(objectId)
+    except Exception as e:
+        print(traceback.format_exc(), file=sys.stderr)
+        return jsonify({'error': str(e)})
+
 def _get_analyses():
     # Get all active analyses.
     Analysis = Object.factory('Analysis')
@@ -359,6 +449,10 @@ def _project_initialize(objectId):
 
     for _, path in paths.items():
         os.makedirs(path, exist_ok=True)
+
+    # Make UPLOAD_HERE file
+    upload_here = os.path.join(read_path, 'UPLOAD_HERE')
+
 
     # Make ftp user.
     # Generate random password
@@ -436,6 +530,45 @@ def _job_output(objectId):
 
     return jsonify({'result': output})
 
+def _sample_citation(objectId):
+    # Get project from server.
+    Sample = Object.factory('Sample')
+    sample = Sample.Query.get(objectId=objectId)
+
+    config = Config.get()
+
+    genus = sample.reference.organism.genus
+    species = sample.reference.organism.species
+    ref_version = sample.reference.version
+
+    arg = '-b {} --bias'.format(config['kallistoBootstraps'])
+
+    if sample.readType == 'single':
+        arg += ' --single -l {} -s {}'.format(sample.readLength,
+                                              sample.readStd)
+
+    format_dict = {'genus': genus,
+                   'species': species,
+                   'ref_version': ref_version,
+                   'arg': arg,
+                   **config}
+
+    info = ['RNA-seq data was analyzed with the Alaska pipeline (alaska.caltech.edu).',
+            ('Quality control was performed using using Bowtie2 (v{versionBowtie}), '
+             'Samtools (v{versionSamtools}), RSeQC (v{versionRseqc}), '
+             'FastQC (v{versionFastqc}), with results aggregated with '
+             'MultiQC (v{versionMultiqc}).').format(**format_dict),
+            ('Reads were aligned to the {genus} {species} genome version {ref_version} '
+             'as provided by Wormbase using Kallisto (v{versionKallisto}) with the following '
+             'flags: {arg}').format(**format_dict),
+            ('Differential expression analyses with Sleuth (v{versionSleuth}) '
+             'were performed using a Wald Test corrected for multiple-testing.').format(**format_dict)]
+
+    if genus == 'caenorhabditis' and species == 'elegans':
+        info.append('Enrichment analysis was performed using the Wormbase Enrichment Suite.')
+
+    return jsonify({'result': info})
+
 def _project_citation(objectId):
     # Get project from server.
     Project = Object.factory('Project')
@@ -470,9 +603,16 @@ def _project_citation(objectId):
                    'species': species,
                    'ref_version': ref_version,
                    'args': args,
+                   'datetime': project.createdAt,
+                   'id': project.objectId,
+                   'n_samples': len(project.relation('samples').query()),
                    **config}
 
-    info = ('RNA-seq data was analyzed with Alaska using the '
+    info = ('alaska_info.txt for {id}\n'
+            'This project was created on {datetime} PST with '
+            '{n_samples} samples.\n\n').format(**format_dict)
+
+    info += ('RNA-seq data was analyzed with Alaska using the '
         '{factor}-factor design option.\nBriefly, Alaska '
         'performs quality control using\nBowtie2 (v{versionBowtie}), '
         'Samtools (v{versionSamtools}), RSeQC (v{versionRseqc}), '
@@ -506,6 +646,75 @@ def _project_citation(objectId):
     project.save()
 
     return jsonify({'result': info})
+
+def _project_compile(project):
+    objectId = project.objectId
+
+    with app.app_context():
+        try:
+            _project_email(objectId, 'Compilation started for project {}'.format(objectId),
+                           'Alaska has started compiling project {} for GEO submission.'.format(objectId))
+
+            project.progress = 'compiling'
+            project.save()
+
+            compile(project)
+
+            project.progress = 'compiled'
+            project.save()
+
+            _project_email(objectId, 'Compilation finished for project {}'.format(objectId),
+                           ('Alaska has finished compiling project {} for GEO submission. '
+                            'Please visit the unique URL to submit.').format(objectId))
+        except Exception as e:
+            project.progress = 'success'
+            project.save()
+            _project_email(objectId, 'Compiliation failed for project {}'.format(objectId),
+                           ('Alaska encountered an error while compiling project {} for GEO submission.'
+                            '<br>{}<br>'
+                            'Please submit an issue on <a href="{}">Github</a> if '
+                            'this keeps happening.').format(objectId, str(e), Config.get()['repoUrl']))
+
+def _project_upload(project, host, username, password, geo_username):
+    objectId = project.objectId
+    with app.app_context():
+        Project = Object.factory('Project')
+        project = Project.Query.get(objectId=objectId)
+        try:
+            _project_email(objectId, 'Submission started for project {}'.format(objectId),
+                           ('Alaska has started submitting project {} to the GEO. '
+                            'You may view the progress of your upload through the '
+                            'public GEO FTP.').format(objectId))
+
+            project.progress = 'uploading'
+            project.save()
+
+            file = '{}_files.tar.gz'.format(geo_username)
+            upload(project, host, username, password, file)
+
+            # Once done, update progress.
+            project.progress = 'uploaded'
+            project.save()
+
+            _project_email(objectId, 'Submission finished for project {}'.format(objectId),
+                           ('Alaska has finished submission of project {} to the GEO.<br>'
+                            'Please fill out this form: <a href="mailto:{}">GEO submission form</a> '
+                            'with the following information:<br>'
+                            '1) Select <i>Notify GEO about your FTP file transfer</i><br>'
+                            '2) Select <i>Yes, all my data have finished transferring</i><br>'
+                            '3) The name of the uploaded file is: <strong>{}</strong><br>'
+                            '4) Select <i>New</i> as the submission kind.<br>'
+                            '5) Select your preferred release date.<br>'
+                            'Failure to submit this form may result in the removal '
+                            'of your data!').format(objectId, Config.get()['geoForm'], file))
+        except Exception as e:
+            project.progress = 'compiled'
+            project.save()
+            _project_email(objectId, 'Upload failed for project {}'.format(objectId),
+                           ('Alaska encountered an error while uploading project {} to the GEO.'
+                            '<br>{}<br>'
+                            'Please submit an issue on <a href="{}">Github</a> if '
+                            'this keeps happening.').format(objectId, str(e), Config.get()['repoUrl']))
 
 def _project_get(objectId, code, name):
     # Get project from server.
@@ -568,27 +777,28 @@ def _project_sleuth(objectId, port):
 
     # Docker client.
     client = docker.from_env()
-    container = client.containers.run('alaska-diff', cmd, detach=True,
+    container = client.containers.run(config['diffImage'], cmd, detach=True,
                                       auto_remove=True, volumes=volumes,
                                       working_dir=wdir, network=network,
                                       environment=environment, name=name,
                                       ports=ports)
 
-    return jsonify({'result': {'id': container.id, 'name': name}})
+    return jsonify({'result': {'containerId': container.id, 'containerName': name}})
 
 def _project_sleuth_close(objectId):
     # Get shiny from server.
-    Shiny = Object.factory('Shiny')
-    shiny = Shiny.Query.get(objectId=objectId)
+    Project = Object.factory('Project')
+    project = Project.Query.get(objectId=objectId)
+    shiny = project.shiny
 
-    container_id = shiny.id
-    container_name = shiny.name
+    container_id = shiny.containerId
+    container_name = shiny.containerName
 
     # Docker client.
     client = docker.from_env()
     try:
         container = client.containers.get(container_id)
-        container.stop(3)
+        container.stop(timeout=1)
         return jsonify({'result': 'stopped'})
     except docker.errors.NotFound:
         return jsonify({'result': 'not found'})
@@ -736,6 +946,27 @@ def _project_email(objectId, subject, message):
 
     return jsonify({'result': email_file})
 
+def cleanup_progress():
+    print('cleaning up progresses')
+    Project = Object.factory('Project')
+    projects = Project.Query.all().filter(progress='compiling')
+    print(projects)
+    for project in projects:
+        project.progress = 'success'
+        project.save()
+
+    projects = Project.Query.all().filter(progress='uploading')
+    print(projects)
+    for project in projects:
+        project.progress = 'compiled'
+        project.save()
+
 
 if __name__ == '__main__':
+    print('Waiting 5 seconds for server.')
+    time.sleep(5)
+
+    # Cleanup progress.
+    cleanup_progress()
+
     app.run(debug=True, host='0.0.0.0')

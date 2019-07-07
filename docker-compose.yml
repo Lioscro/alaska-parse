@@ -29,9 +29,7 @@ services:
       retries: 3
   # Flask Webhook Server
   webhook:
-    build:
-      context: ./docker/webhook
-    image: alaska-webhook
+    image: lioscro/alaska:webhook
     restart: always
     environment:
       - PARSE_HOSTNAME=${PARSE_HOSTNAME}
@@ -50,9 +48,7 @@ services:
       - backend
   # Worker server
   worker:
-    build:
-      context: ./docker/worker
-    image: alaska-worker
+    image: lioscro/alaska:worker
     restart: always
     environment:
       - PARSE_HOSTNAME=http://parse-server:1337/parse

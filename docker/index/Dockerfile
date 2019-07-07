@@ -1,6 +1,11 @@
 # UBUNTU VERSION: 16.04 (xenial)
 FROM ubuntu:xenial
 
+# Timezone
+ARG TIMEZONE=America/Los_Angeles
+RUN ln -snf /usr/share/zoneinfo/$TIMEZONE /etc/localtime \
+    && echo $TIMEZONE > /etc/timezone
+
 ARG BOWTIE2_VER
 ARG MINICONDA3_VER
 ARG KALLISTO_VER

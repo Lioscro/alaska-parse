@@ -114,7 +114,6 @@ Parse.Cloud.define('newProject', async (request) => {
   }
 });
 
-/* Initialize new project. */
 Parse.Cloud.define('getReads', async (request) => {
   var objectId = request.params.objectId;
 
@@ -253,6 +252,29 @@ Parse.Cloud.define('setSamples', async (request) => {
   }
 });
 
+Parse.Cloud.define('sampleCitation', async (request) => {
+  const objectId = request.params.objectId;
+
+  try {
+    var response = await Parse.Cloud.httpRequest({
+      method: 'POST',
+      url: `http://webhook:5000/sample/${objectId}/citation`,
+      followRedirects: true,
+    });
+  } catch (e) {
+    return {'error': 'httprequest error'};
+  }
+  var data = response.data;
+
+  console.log(data);
+
+  if (!('result' in data)) {
+    throw data;
+  }
+
+  return data.result;
+});
+
 /* Start project.. */
 Parse.Cloud.define('startProject', async (request) => {
   var objectId = request.params.objectId;
@@ -268,7 +290,7 @@ Parse.Cloud.define('startProject', async (request) => {
   await project.save({'progress': 'finalized',
                       'finalized': true,
                       'oldProgress': progress.finalized,
-                      'status': 'queued'});
+                      'progress': 'queued'});
 
   // Write citation.
   try {
@@ -323,8 +345,8 @@ Parse.Cloud.define('jobStarted', async (request) => {
   await job.save({'status': 'running', 'startedAt': new Date()});
 
   // Set project status if appropriate.
-  if (project.get('status') != 'running') {
-    await project.save({'status': 'running'});
+  if (project.get('progress') != 'running') {
+    await project.save({'progress': 'running'});
     sendEmail(project.id, `Analysis started for project ${project.id}`,
       `Alaska has started analysis of project ${project.id}. Please visit the unique URL for more details.`
     );
@@ -352,7 +374,7 @@ Parse.Cloud.define('jobSuccess', async (request) => {
     }
   }
   if (success) {
-    project.set('status', 'success');
+    project.set('progress', 'success');
     sendEmail(project.id, `Analysis finished for project ${project.id}`,
       `Alaska finished analysis of project ${project.id}. Please visit the unique URL.`
     )
@@ -380,7 +402,7 @@ Parse.Cloud.define('jobError', async (request) => {
   var job = await query.get(objectId);
   var project = await job.get('project').fetch();
 
-  await project.save({'oldProgress': -project.get('oldProgress'), 'status': 'error'});
+  await project.save({'oldProgress': -project.get('oldProgress'), 'progress': 'error'});
 
   // Set status to error.
   job.set('status', 'error');
@@ -439,10 +461,11 @@ Parse.Cloud.define('openSleuth', async (request) => {
   const project = await query.get(objectId);
 
   // Check if shiny server is already running.
-  var shiny = project.get('shiny');
-  if (shiny != null) {
-    shiny = await shiny.fetch();
-    return {'port': shiny.get('port'), 'wait': 0};
+  if (project.has('shiny')) {
+    var shiny = await project.get('shiny').fetch();
+    if (shiny.has('port')) {
+      return {'port': shiny.get('port'), 'wait': 0};
+    }
   }
 
   // Get available ports.
@@ -482,12 +505,68 @@ Parse.Cloud.define('openSleuth', async (request) => {
   } else {
     // Success. Make new row in Shiny table.
     var Shiny = Parse.Object.extend('Shiny');
-    var shiny = new Shiny();
-    await shiny.save({'port': port, 'project': project, ...data.result});
+    var shiny = new Shiny({'port': port, 'project': project, ...data.result});
+    await shiny.save();
     await project.save({'shiny': shiny});
 
     return {'port': port, 'wait': 5000};
   }
+});
+
+Parse.Cloud.define('compileProject', async (request) => {
+  const objectId = request.params.objectId;
+
+  // Send request to webhook.
+  try {
+    var response = await Parse.Cloud.httpRequest({
+      method: 'POST',
+      url: `http://webhook:5000/project/${objectId}/compile`,
+      followRedirects: true,
+    });
+  } catch (e) {
+    return {'error': 'httprequest error'};
+  }
+  var data = response.data;
+
+  console.log(data);
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  return data.result;
+});
+
+Parse.Cloud.define('uploadProject', async (request) => {
+  const objectId = request.params.objectId;
+  const host = request.params.host;
+  const username = request.params.username;
+  const password = request.params.password;
+  const geo_username = request.params.geo_username;
+
+  // Send request to webhook.
+  try {
+    var response = await Parse.Cloud.httpRequest({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      url: `http://webhook:5000/project/${objectId}/upload`,
+      followRedirects: true,
+      body: { host, username, password, geo_username }
+    });
+  } catch (e) {
+    return {'error': 'httprequest error'};
+  }
+  var data = response.data;
+
+  console.log(data);
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  return data.result;
 });
 
 Parse.Cloud.define('sendEmail', async (request) => {
@@ -548,7 +627,7 @@ Parse.Cloud.beforeDelete('Sample', async function(request) {
 
 Parse.Cloud.beforeDelete('Shiny', async function(request) {
   var shiny = request.object;
-  var project = shiny.get('project');
+  var project = await shiny.get('project').fetch();
 
   // Send request to webhook to stop container.
   var response = await Parse.Cloud.httpRequest({
@@ -669,6 +748,30 @@ async function sendEmail(objectId, subject, message) {
   }
   return response;
 }
+
+// Set all compiling projects to success.
+// var compilingQuery = new Parse.Query('Project');
+// compilingQuery.equalTo('progress', 'compiling');
+// compilingQuery.find().then(function (result) {
+//   for (var i = 0; i < result.length; i++) {
+//     var project = result[i];
+//     project.set('progress', 'success');
+//   }
+// }, function (error) {
+//   throw error;
+// });
+//
+// // Set all uploading projects to compiled.
+// var uploadingQuery = new Parse.Query('Project');
+// uploadingQuery.equalTo('progress', 'uploading');
+// uploadingQuery.find().then(function (result) {
+//   for (var i = 0; i < result.length; i++) {
+//     var project = result[i];
+//     project.set('progress', 'compiled');
+//   }
+// }, function (error) {
+//   throw error;
+// });
 
 // Parse.Cloud.beforeDelete('Read', async function(request) {
 //   console.log('Read beforeDelete');

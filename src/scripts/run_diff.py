@@ -107,6 +107,6 @@ if __name__ == '__main__':
 
     # If archive = true:
     if args.archive:
-        archive_path = archive_project(project, Config.get()['projectArchive'])
+        archive_path = archive_project(project, '{}_{}'.format(project.objectId, Config.get()['projectArchive']))
         project.files['archive'] = archive_path
         project.save()

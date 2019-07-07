@@ -19,9 +19,6 @@ from parse_rest.connection import ParseBatcher
 from parse_rest.core import ResourceRequestBadRequest, ParseError
 register(PARSE_APP_ID, '', master_key=PARSE_MASTER_KEY)
 
-# Setup for parse_rest
-os.environ["PARSE_API_ROOT"] = PARSE_HOSTNAME
-
 def run_post(project, code='post', requires='diff'):
     print_with_flush('# starting post for project {}'.format(project.objectId))
 
@@ -101,6 +98,6 @@ if __name__ == '__main__':
 
     # If archive = true:
     if args.archive:
-        archive_path = archive_project(project, Config.get()['projectArchive'])
+        archive_path = archive_project(project, '{}_{}'.format(project.objectId, Config.get()['projectArchive']))
         project.files['archive'] = archive_path
         project.save()

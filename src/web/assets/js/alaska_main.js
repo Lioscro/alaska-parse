@@ -30,7 +30,7 @@ var currentSampleForm;
  */
 function _saveProject(callback = function () {}) {
   project.save().then(function (response) {
-    console.log(response);
+    // console.log(response);
     callback();
   }, function (error) {
     _showErrorModal(error);
@@ -100,7 +100,7 @@ function _showErrorModal(message) {
   var output = modal.find('#error_output');
 
   if (typeof(message) == 'object') {
-    output.text(message.message.error);
+    output.text(JSON.stringify(message));
   } else {
     output.text(message);
   }
@@ -277,7 +277,6 @@ function loadMetaInput() {
   set_common_meta_inputs(commonForm, commonInputs);
 
   // Set project inputs.
-  var sampleInputs = {};
   for (var name in samples) {
     var sample = samples[name];
 
@@ -378,6 +377,7 @@ function _hideLoadingSpinner(button) {
  * Show done checkmark.
  */
 function _showSuccessCheck(button) {
+  button.prop('disabled', true);
   var width = button.width();
 
   button.removeClass('running');
@@ -825,7 +825,7 @@ function _setupSampleChoices(dropdown, forms) {
 
     // Set on click handler.
     new_item.click({'name': name}, function (e) {
-      console.log('clicked ' + e.data.name);
+      // console.log('clicked ' + e.data.name);
       var item = $(this);
       var name = e.data.name;
       var grandparent = item.parent().parent();
@@ -927,7 +927,7 @@ function _setupReadsTable(sample, form) {
   var table = form.find('.sample_reads_table');
 
   sample.relation('reads').query().find().then(function (response) {
-    console.log(response);
+    // console.log(response);
     for (var i = 0; i < response.length; i++) {
       var read = response[i];
       var path = read.get('path');
@@ -1210,10 +1210,13 @@ async function _setProjectProgress() {
   badge.removeClass('badge-secondary badge-info badge-success badge-danger');
   badge.removeClass('flash animated infinite');
 
-  var status = project.get('status');
-  badge.text(status);
+  var compileBtn = $('#geo_compile_modal_btn');
+  var uploadBtn = $('#geo_submit_modal_btn');
 
-  switch (status) {
+  var progress = project.get('progress');
+  badge.text(progress);
+
+  switch (progress) {
     case 'queued':
       badge.addClass('badge-secondary');
       break;
@@ -1223,7 +1226,36 @@ async function _setProjectProgress() {
     case 'success':
       badge.addClass('badge-success');
       clearInterval(progressInterval);
+      // Enable GEO compile button.
+      compileBtn.prop('disabled', false);
       $('#all_download_btn').prop('disabled', false);
+      break;
+    case 'compiling':
+      badge.text('success');
+      badge.addClass('badge-success');
+      $('#all_download_btn').prop('disabled', false);
+      _showLoadingSpinner(compileBtn);
+      break;
+    case 'compiled':
+      badge.text('success');
+      badge.addClass('badge-success');
+      $('#all_download_btn').prop('disabled', false);
+      uploadBtn.prop('disabled', false);
+      _showSuccessCheck(compileBtn);
+      break;
+    case 'uploading':
+      badge.text('success');
+      badge.addClass('badge-success');
+      $('#all_download_btn').prop('disabled', false);
+      _showSuccessCheck(compileBtn);
+      _showLoadingSpinner(uploadBtn);
+      break;
+    case 'uploaded':
+      badge.text('success');
+      badge.addClass('badge-success');
+      $('#all_download_btn').prop('disabled', false);
+      _showSuccessCheck(compileBtn);
+      _showSuccessCheck(uploadBtn);
       break;
     case 'error':
       badge.addClass('badge-danger');
@@ -1231,7 +1263,7 @@ async function _setProjectProgress() {
       $('#retry_btn').show();
       break;
     default:
-      _showErrorModal(`Unknown project status ${status}`);
+      _showErrorModal(`Unknown project progress ${progress}`);
   }
 
   // Loop through each job.
@@ -1450,15 +1482,12 @@ function showProgress() {
 
     // Set loading spinner.
     var btn = $('#geo_compile_modal_btn');
-    var spinner = btn.children('.loading_spinner');
-    set_loading_spinner(btn, spinner);
+    _showLoadingSpinner(btn);
 
-    var target = 'cgi_request.php';
-    var data = {
-      id: proj_id,
-      action: 'prepare_geo'
-    }
-    send_ajax_request(target, data, null, true);
+    // Run function to compile project.
+    _runCloudFunction('compileProject', function () {}, {objectId: project.id});
+
+    _pollProject();
   });
 
   // Set submit button.
@@ -1468,16 +1497,16 @@ function showProgress() {
     var progress_container = e.data.progress_container;
     var groups = {
       geo_username: progress_container.find('.geo_username_group'),
-      ftp_host: progress_container.find('.ftp_host_group'),
-      ftp_username: progress_container.find('.ftp_username_group'),
-      ftp_password: progress_container.find('.ftp_password_group')
+      host: progress_container.find('.ftp_host_group'),
+      username: progress_container.find('.ftp_username_group'),
+      password: progress_container.find('.ftp_password_group')
     };
     // Make new object.
     var obj = {
       geo_username: '',
-      ftp_host: '',
-      ftp_username: '',
-      ftp_password: ''
+      host: '',
+      username: '',
+      password: ''
     };
 
     // Fetch inputs.
@@ -1498,19 +1527,12 @@ function showProgress() {
     if (valid) {
       // Dismiss modal.
       var btn = $('#geo_submit_modal_btn');
-      var spinner = btn.children('.loading_spinner');
-      set_loading_spinner(btn, spinner);
+      _showLoadingSpinner(btn);
       progress_container.find('#geo_submit_modal').modal('hide');
-      function callback() {
-        var target = 'cgi_request.php';
-        var data = {
-          id: proj_id,
-          action: 'submit_geo'
-        }
-        send_ajax_request(target, data, null, false);
-      }
 
-      write_object_to_temp(obj, 'ftp_info', callback);
+       _runCloudFunction('uploadProject', function () {}, { objectId: project.id, ...obj});
+
+       _pollProject();
     }
   });
 
@@ -2246,7 +2268,7 @@ function new_proj() {
  * Get the md5 sum of the given file.
  */
 function get_md5(md5_id, spinner_id, path) {
-  console.log(path);
+  // console.log(path);
 
   var target = 'md5sum.php';
   var data = {
@@ -2642,7 +2664,7 @@ function set_choose_sample_button(dropdown, forms) {
 
     // Set on click handler.
     new_item.click({'id': id}, function (e) {
-      console.log('clicked ' + e.data.id);
+      // console.log('clicked ' + e.data.id);
       var item = $(this);
       var id = e.data.id;
       var grandparent = item.parent().parent();
@@ -3268,8 +3290,8 @@ function set_values_of_organism_dropdowns(div, vals) {
   var species = vals.species;
   var version = vals.version;
 
-  console.log(organisms);
-  console.log(genus, species, version);
+  // console.log(organisms);
+  // console.log(genus, species, version);
 
   // Set genus dropdown.
   var found = false;
@@ -3316,7 +3338,7 @@ function set_values_of_organism_dropdowns(div, vals) {
         var this_val = option.val();
 
         if (species == this_val) {
-          console.log(option);
+          // console.log(option);
           option.prop('selected', true);
           return false;
         }
@@ -3386,7 +3408,7 @@ function set_factor_card_to_sample_listener(factor_card,
     var val = selected.val();
     var other_val = other_selected.val();
 
-    console.log('other_val: ' + other_val);
+    // console.log('other_val: ' + other_val);
 
     // Skip if null.
     if (val == null) {
@@ -3814,7 +3836,7 @@ function copy_to_form(form_group, to_form_class_name, disable) {
           options.push(option);
         }
 
-        console.log(options);
+        // console.log(options);
 
         // Then, add necessary rows.
         for (var i = 0; i < n_pairs; i++) {
@@ -3883,7 +3905,7 @@ function copy_to_form(form_group, to_form_class_name, disable) {
       }
     }
 
-    console.log(indices);
+    // console.log(indices);
 
     // If the form is empty, just append the element into the form.
     if (indices.length == 0) {
@@ -4613,9 +4635,6 @@ function set_common_meta_inputs(card, inputs) {
       // Check the checkbox.
       checkbox.prop('checked', false);
       checkbox.click();
-
-      // Fire change for inputs.
-      form_group.find('button').change();
     } else {
       // Unselect the checkbox.
       checkbox.prop('checked', true);
@@ -4633,6 +4652,11 @@ function set_common_meta_inputs(card, inputs) {
       $('#sample_share_read_type_paired').click();
     }
   }
+
+  // Why?
+  setTimeout(function () {
+    card.find('input').change();
+  }, 500)
 }
 
 function set_sample_meta_inputs(card, inputs) {
@@ -5691,7 +5715,7 @@ function copy_input() {
   });
 
   // Output list of selected ids for debugging.
-  console.log(names_to_copy);
+  // console.log(names_to_copy);
 
   // Copy the value to these samples.
   for (var i = 0; i < names_to_copy.length; i++) {
@@ -6155,9 +6179,9 @@ function set_sorted_names() {
   for (var id in proj.samples) {
     names_to_ids[proj.samples[id].name] = id;
   }
-  console.log(names_to_ids);
+  // console.log(names_to_ids);
   sorted_names = Object.keys(names_to_ids).sort();
-  console.log(sorted_names);
+  // console.log(sorted_names);
 }
 
 /**
@@ -6385,8 +6409,8 @@ function get_id_pw(out) {
     'pw': pw
   };
 
-  console.log('id: ' + id + '\n');
-  console.log('pw: ' + pw + '\n');
+  // console.log('id: ' + id + '\n');
+  // console.log('pw: ' + pw + '\n');
 
   return result;
 }
@@ -6461,7 +6485,7 @@ function parse_infer_samples(out, button, spinner, width) {
   // Then, we have the raw json dump.
   var dump = split2[0];
 
-  console.log(dump);
+  // console.log(dump);
 
   // Parse json.
   proj = JSON.parse(dump);
@@ -6525,30 +6549,30 @@ function parse_temp_obj(out, callback, form) {
 function parse_proj_status(out) {
   var split = out.split('\n');
   var status = parseInt(split[split.length - 3]);
-  console.log(split);
-  console.log(status);
+  // console.log(split);
+  // console.log(status);
 
   switch (status) {
     // Project created.
     case progress.new:
     case progress.raw_reads:
-      console.log('status: created');
+      // console.log('status: created');
       goto_ftp_info();
       break;
 
     // Samples inferred
     case progress.inferred:
-      console.log('status: samples inferred');
+      // console.log('status: samples inferred');
       goto_ftp_info();
       break;
     case progress.set:
-      console.log('status: set');
+      // console.log('status: set');
       goto_meta_input()
       break;
 
     // For all of these cases, we go to the progress page.
     case progress.finalized:
-      console.log('status: finalized');
+      // console.log('status: finalized');
 
     case progress.diff_error:
     case progress.quant_error:
@@ -6619,7 +6643,7 @@ function parse_sleuth_server(out, btn, spinner, width) {
   var port = parseInt(split2[split2.length - 1]);
 
   function open_sleuth_window(port, btn, spinner, width) {
-    console.log(port);
+    // console.log(port);
 
     btn.prop('disabled', false);
     spinner.hide();
@@ -6658,7 +6682,7 @@ function send_ajax_request(target, data, callback, include_out, ...args) {
     url: target,
     'data': data,
     success:function(out) {
-      console.log(out);
+      // console.log(out);
 
       if (out.includes('ERROR')) {
         var modal = $('#error_modal');
