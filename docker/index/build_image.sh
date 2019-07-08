@@ -1,8 +1,8 @@
 #!/bin/bash
-source set_env_variables.sh
+source ../shared.env
 
 # build kallisto image
-docker build -t "alaska-index" \
+docker build -t "$DOCKER_REPO:index" \
              --build-arg BOWTIE2_VER="$BOWTIE2_VER" \
              --build-arg MINICONDA3_URL="$MINICONDA3_URL" \
              --build-arg KALLISTO_URL="$KALLISTO_URL" \

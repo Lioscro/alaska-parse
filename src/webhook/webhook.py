@@ -3,6 +3,7 @@ import sys
 import re
 import time
 import json
+import string
 import random
 import signal
 import string
@@ -28,7 +29,7 @@ os.environ["PARSE_API_ROOT"] = PARSE_HOSTNAME
 
 from parse_rest.config import Config
 from parse_rest.datatypes import Function, Object, GeoPoint
-from parse_rest.connection import register
+from parse_rest.connection import register, SessionToken
 from parse_rest.query import QueryResourceDoesNotExist
 from parse_rest.connection import ParseBatcher
 from parse_rest.core import ResourceRequestBadRequest, ParseError
@@ -74,6 +75,65 @@ def index():
 @app.route('/status', methods=['POST'])
 def status():
     return jsonify({'success': 'online'})
+
+verified = []
+verification = {}
+
+@app.route('/email/verified', methods=['POST'])
+def email_verified():
+    data = request.get_json()
+    email = data['email']
+
+    if email in verified:
+        return jsonify({'result': True})
+    return jsonify({'result': False})
+
+@app.route('/email/verify/<key>', methods=['GET', 'POST'])
+def verify_email(key):
+    if key in verification:
+        verified.append(verification[key])
+        del verification[key]
+    else:
+        return jsonify({'result': 'invalid verification key'})
+
+    return jsonify({'result': 'verified'})
+
+@app.route('/email/verification', methods=['POST'])
+def send_verification_email():
+    data = request.get_json()
+    to = data['email']
+    fr = 'verify@alaska.caltech.edu'
+    datetime = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    config = Config.get()
+    host = config['host']
+    data_path = config['dataPath']
+    email_dir = config['emailDir']
+    email_path = os.path.join(data_path, email_dir)
+    key = ''
+    for i in range(24):
+        key += str(random.choice(string.digits))
+    verification[key] = to
+
+    url = 'http://{}/webhook/email/verify/{}'.format(host, key)
+
+    subject = 'Email verification for Alaska'
+    message = ('Please click on the following link to complete verification.<br>'
+               '<a href="{}">{}</a><br>'
+               'If you did not request verification, please do not click on the link.').format(url, url)
+
+    email = {'to': to,
+             'from': fr,
+             'subject': subject,
+             'message': message}
+
+    email_file = '{}.json'.format(datetime)
+    output_path = os.path.join(email_path, email_file)
+
+    with open(output_path, 'w') as f:
+        json.dump(email, f, indent=4)
+
+    return jsonify({'result': email_file})
 
 @app.route('/reference/new', methods=['POST'])
 def organismNew():
@@ -263,7 +323,9 @@ def _referenceBuild(reference):
 @app.route('/project/<objectId>/initialize', methods=['POST'])
 def project_initialize(objectId):
     try:
-        return _project_initialize(objectId)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_initialize(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -271,7 +333,9 @@ def project_initialize(objectId):
 @app.route('/project/<objectId>/ftp', methods=['POST'])
 def project_ftp(objectId):
     try:
-        return _project_ftp(objectId)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_ftp(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -279,20 +343,22 @@ def project_ftp(objectId):
 @app.route('/project/<objectId>/compile', methods=['POST'])
 def project_compile(objectId):
     try:
-        if objectId in compiling and compiling[objectId].is_alive():
-            raise Exception('{} is already being compiled'.format(objectId))
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            if objectId in compiling and compiling[objectId].is_alive():
+                raise Exception('{} is already being compiled'.format(objectId))
 
-        Project = Object.factory('Project')
-        project = Project.Query.get(objectId=objectId)
-        project.progress = 'compiling'
-        project.save()
+            Project = Object.factory('Project')
+            project = Project.Query.get(objectId=objectId)
+            project.progress = 'compiling'
+            project.save()
 
-        t = Thread(target=_project_compile, args=(project,))
-        t.daemon = True
-        compiling[objectId] = t
-        t.start()
+            t = Thread(target=_project_compile, args=(project,))
+            t.daemon = True
+            compiling[objectId] = t
+            t.start()
 
-        return jsonify({'result':'compiling'})
+            return jsonify({'result':'compiling'})
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -300,26 +366,28 @@ def project_compile(objectId):
 @app.route('/project/<objectId>/upload', methods=['POST'])
 def project_upload(objectId):
     try:
-        data = request.get_json()
-        host = data['host']
-        username = data['username']
-        password = data['password']
-        geo_username = data['geo_username']
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            data = request.get_json()
+            host = data['host']
+            username = data['username']
+            password = data['password']
+            geo_username = data['geo_username']
 
-        Project = Object.factory('Project')
-        project = Project.Query.get(objectId=objectId)
-        project.progress = 'uploading'
-        project.save()
+            Project = Object.factory('Project')
+            project = Project.Query.get(objectId=objectId)
+            project.progress = 'uploading'
+            project.save()
 
-        if objectId in uploading and uploading[objectId].is_alive():
-            raise Exception('{} is already being uploaded'.format(objectId))
+            if objectId in uploading and uploading[objectId].is_alive():
+                raise Exception('{} is already being uploaded'.format(objectId))
 
-        t = Thread(target=_project_upload, args=(project, host, username, password, geo_username,))
-        t.daemon = True
-        uploading[objectId] = t
-        t.start()
+            t = Thread(target=_project_upload, args=(project, host, username, password, geo_username,))
+            t.daemon = True
+            uploading[objectId] = t
+            t.start()
 
-        return jsonify({'result': 'uploading'})
+            return jsonify({'result': 'uploading'})
 
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
@@ -329,7 +397,9 @@ def project_upload(objectId):
 @app.route('/project/<objectId>/delete', methods=['POST'])
 def project_delete(objectId):
     try:
-        return _project_delete(objectId)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_delete(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -337,7 +407,9 @@ def project_delete(objectId):
 @app.route('/project/<objectId>/citation', methods=['POST'])
 def project_citation(objectId):
     try:
-        return _project_citation(objectId)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_citation(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -346,7 +418,11 @@ def project_citation(objectId):
 @app.route('/project/<objectId>/file/<code>/<name>', methods=['GET'])
 def project_get(objectId, code, name):
     try:
-        return _project_get(objectId, code, name)
+        token = request.args.get('sessionToken')
+
+        # Check session token.
+        with SessionToken(token):
+            return _project_get(objectId, code, name)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -363,7 +439,9 @@ def job_output(objectId):
 @app.route('/project/<objectId>/sleuth/<int:port>', methods=['POST'])
 def project_sleuth(objectId, port):
     try:
-        return _project_sleuth(objectId, port)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_sleuth(objectId, port)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -371,7 +449,9 @@ def project_sleuth(objectId, port):
 @app.route('/project/<objectId>/sleuth/close', methods=['POST'])
 def project_sleuth_close(objectId):
     try:
-        return _project_sleuth_close(objectId)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_sleuth_close(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -379,7 +459,9 @@ def project_sleuth_close(objectId):
 @app.route('/project/<objectId>/reads', methods=['POST'])
 def project_reads(objectId):
     try:
-        return _project_reads(objectId)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            return _project_reads(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -407,8 +489,10 @@ def read_delete():
 @app.route('/project/<projId>/sample/<objectId>/initialize', methods=['POST'])
 def sample_initialize(projId, objectId):
     try:
-        name = request.args.get('name')
-        return _sample_initialize(projId, objectId, name)
+        token = request.args.get('sessionToken')
+        with SessionToken(token):
+            name = request.args.get('name')
+            return _sample_initialize(projId, objectId, name)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
         return jsonify({'error': str(e)})
@@ -452,14 +536,15 @@ def _project_initialize(objectId):
 
     # Make UPLOAD_HERE file
     upload_here = os.path.join(read_path, 'UPLOAD_HERE')
-
+    with open(upload_here, 'w') as f:
+        f.write('')
 
     # Make ftp user.
     # Generate random password
     passwd = _generate_password(5)
 
     # begin container variables
-    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m '
+    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
           + '-u ftpuser -d {}"').format(passwd, passwd, objectId, read_path)
     print(cmd, file=sys.stderr)
 
@@ -488,7 +573,7 @@ def _project_ftp(objectId):
     config = Config.get()
 
     # Change ftp home directory to the project root.
-    cmd = ('pure-pw usermod {} -d {} -m').format(objectId, project.paths['root'])
+    cmd = ('pure-pw usermod {} -d {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd').format(objectId, project.paths['root'])
     try:
         ftp_name = config['repoName'] + '_' + config['ftpService'] + '_1'
         client = docker.from_env()
@@ -499,7 +584,7 @@ def _project_ftp(objectId):
         exit_code = out[0]
 
         if exit_code != 0:
-            raise Exception('non-zero exit code on ftp user creation')
+            raise Exception('non-zero exit code on ftp user modification')
     except Exception as e:
         print('error occured while modifying ftp user {}'.format(objectId), file=sys.stderr)
         raise e
@@ -655,9 +740,6 @@ def _project_compile(project):
             _project_email(objectId, 'Compilation started for project {}'.format(objectId),
                            'Alaska has started compiling project {} for GEO submission.'.format(objectId))
 
-            project.progress = 'compiling'
-            project.save()
-
             compile(project)
 
             project.progress = 'compiled'
@@ -672,22 +754,17 @@ def _project_compile(project):
             _project_email(objectId, 'Compiliation failed for project {}'.format(objectId),
                            ('Alaska encountered an error while compiling project {} for GEO submission.'
                             '<br>{}<br>'
-                            'Please submit an issue on <a href="{}">Github</a> if '
-                            'this keeps happening.').format(objectId, str(e), Config.get()['repoUrl']))
+                            'Please submit an issue on Github if '
+                            'this keeps happening.').format(objectId, str(e)))
 
 def _project_upload(project, host, username, password, geo_username):
     objectId = project.objectId
     with app.app_context():
-        Project = Object.factory('Project')
-        project = Project.Query.get(objectId=objectId)
         try:
             _project_email(objectId, 'Submission started for project {}'.format(objectId),
                            ('Alaska has started submitting project {} to the GEO. '
                             'You may view the progress of your upload through the '
                             'public GEO FTP.').format(objectId))
-
-            project.progress = 'uploading'
-            project.save()
 
             file = '{}_files.tar.gz'.format(geo_username)
             upload(project, host, username, password, file)
@@ -713,8 +790,8 @@ def _project_upload(project, host, username, password, geo_username):
             _project_email(objectId, 'Upload failed for project {}'.format(objectId),
                            ('Alaska encountered an error while uploading project {} to the GEO.'
                             '<br>{}<br>'
-                            'Please submit an issue on <a href="{}">Github</a> if '
-                            'this keeps happening.').format(objectId, str(e), Config.get()['repoUrl']))
+                            'Please submit an issue on Github if '
+                            'this keeps happening.').format(objectId, str(e)))
 
 def _project_get(objectId, code, name):
     # Get project from server.

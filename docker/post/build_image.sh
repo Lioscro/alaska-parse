@@ -1,9 +1,9 @@
 #!/bin/bash
 # Builds the alaska_sleuth image with appropriate options.
-source set_env_variables.sh
+source ../shared.env
 
 # build request image
-docker build -t "alaska-post" \
+docker build -t "$DOCKER_REPO:post" \
              --build-arg TIMEZONE="$TIMEZONE" \
              --build-arg MINICONDA3_URL="$MINICONDA3_URL" \
              --force-rm \

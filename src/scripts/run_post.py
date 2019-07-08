@@ -6,7 +6,6 @@ import tissue_enrichment_analysis as tea
 PARSE_HOSTNAME = os.getenv('PARSE_HOSTNAME', 'http://parse-server:1337/parse')
 PARSE_APP_ID = os.getenv('PARSE_APP_ID', 'alaska')
 PARSE_MASTER_KEY = os.getenv('PARSE_MASTER_KEY', 'MASTER_KEY')
-print(PARSE_HOSTNAME, PARSE_APP_ID, PARSE_MASTER_KEY)
 
 # Setup for parse_rest
 os.environ["PARSE_API_ROOT"] = PARSE_HOSTNAME
@@ -22,7 +21,7 @@ register(PARSE_APP_ID, '', master_key=PARSE_MASTER_KEY)
 def run_post(project, code='post', requires='diff'):
     print_with_flush('# starting post for project {}'.format(project.objectId))
 
-    organism = project.relation('samples').query()[0].organism
+    organism = project.relation('samples').query()[0].reference.organism
     if organism.genus != 'caenorhabditis' or organism.species != 'elegans':
         print_with_flush('# Currently, post analysis is only supported for '
                          'C. elegans')

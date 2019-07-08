@@ -82,9 +82,25 @@ Parse.Cloud.job('Reference: build unbuilt indices', function(request, status) {
 
 /* Initialize new project. */
 Parse.Cloud.define('newProject', async (request) => {
+  var user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
+  const email = request.params.email;
+
   var Project = Parse.Object.extend('Project');
   var project = new Project();
-  await project.save({'files': {}, 'progress': 'init', 'metadata': {}, 'formInput': {}});
+  project.setACL(new Parse.ACL(user));
+  await project.save({
+    'files': {},
+    'progress':
+    'init',
+    'metadata': {},
+    'formInput': {},
+    email
+  }, { sessionToken });
   console.log(project);
 
   // Send new project request to webhook.
@@ -103,11 +119,16 @@ Parse.Cloud.define('newProject', async (request) => {
   console.log(data);
 
   if ('result' in data) {
-    await project.save(data.result);
+    sendEmail(project.id, `New project ${project.id}`,
+      `Alaska has initialized a new project ${project.id}. Please visit the unique URL for more details.`);
+
+    await project.save(data.result, {sessionToken: user.getSessionToken()});
+    user.relation('projects').add(project);
+    await user.save(null, { sessionToken });
     return project;
   } else if ('error' in data) {
     // Remove project.
-    await project.destroy();
+    await project.destroy({ sessionToken });
     return data;
   } else {
     return {'error': 'unknown response'};
@@ -115,6 +136,12 @@ Parse.Cloud.define('newProject', async (request) => {
 });
 
 Parse.Cloud.define('getReads', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
   var objectId = request.params.objectId;
 
   // Send project reads request to webhook.
@@ -123,6 +150,7 @@ Parse.Cloud.define('getReads', async (request) => {
       method: 'POST',
       url: 'http://webhook:5000/project/' + objectId + '/reads',
       followRedirects: true,
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -140,6 +168,11 @@ Parse.Cloud.define('getReads', async (request) => {
 
 /* Get md5 checksum. */
 Parse.Cloud.define('getMd5', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
   var path = request.params.path;
 
   // Send project reads request to webhook.
@@ -166,18 +199,24 @@ Parse.Cloud.define('getMd5', async (request) => {
 
 /* Set samples. */
 Parse.Cloud.define('setSamples', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
   var objectId = request.params.objectId;
   var samples = request.params.samples;
 
   // Get project object.
   var query = new Parse.Query('Project');
-  var project = await query.get(objectId);
+  var project = await query.get(objectId, { sessionToken });
 
   // Remove all existing samples from this project.
   var relation = project.relation('samples');
-  var related_samples = await relation.query().find();
+  var related_samples = await relation.query().find({ sessionToken });
   for (var i = 0; i < related_samples.length; i++) {
-    related_samples[i].destroy();
+    related_samples[i].destroy({ sessionToken });
   }
 
   var Read = Parse.Object.extend('Read');
@@ -189,9 +228,13 @@ Parse.Cloud.define('setSamples', async (request) => {
       console.log(sample_name);
       var sample = samples[sample_name];
 
-      var new_sample = new Sample({'name': sample_name, 'metadata': {}, 'formInput': {}});
+      var new_sample = new Sample({
+        'name': sample_name,
+        'metadata': {},
+        'formInput': {},
+        'files': {}
+      });
       new_samples.push(new_sample);
-      new_sample.set('files', {});
       new_sample.relation('projects').add(project);
 
       for (var i = 0; i < sample.length; i++) {
@@ -206,23 +249,25 @@ Parse.Cloud.define('setSamples', async (request) => {
         var new_read = new Read(read);
         new_reads.push(new_read);
         new_read.set('sample', new_sample);
-        await new_read.save();
+        new_read.setACL(new Parse.ACL(user));
+        await new_read.save(null, { sessionToken });
         console.log(new_read);
         new_sample.relation('reads').add(new_read);
-        await new_sample.save();
-        new_sample = await new_sample.fetch();
+        new_sample.setACL(new Parse.ACL(user));
+        await new_sample.save(null, { sessionToken });
+        new_sample = await new_sample.fetch({ sessionToken });
       }
 
       project.relation('samples').add(new_sample);
-      await project.save();
-      project = await project.fetch();
+      await project.save(null, { sessionToken });
+      project = await project.fetch({ sessionToken });
 
       // Make directories.
       var response = await Parse.Cloud.httpRequest({
         method: 'POST',
         url: 'http://webhook:5000/project/' + project.id + '/sample/' + new_sample.id + '/initialize' ,
         followRedirects: true,
-        params: {'name': sample_name}
+        params: {'name': sample_name, sessionToken}
       });
       var data = response.data;
 
@@ -231,21 +276,21 @@ Parse.Cloud.define('setSamples', async (request) => {
       if (!('result' in data) ){
         throw data;
       } else {
-        new_sample.save(data.result);
+        new_sample.save(data.result, { sessionToken });
       }
     }
 
     // Set project progress to 'meta'
-    await project.save({'progress': 'meta'});
+    await project.save({'progress': 'meta'}, { sessionToken });
 
     return {'reads': new_reads, 'samples': new_samples};
   } catch (e) {
     // If an error occured, destoy all new reads and samples.
     for (var i = 0; i < new_reads.length; i++) {
-      new_reads[i].destroy();
+      new_reads[i].destroy({ sessionToken });
     }
     for (var i = 0; i < new_samples.length; i++) {
-      new_samples[i].destroy();
+      new_samples[i].destroy({ sessionToken });
     }
 
     throw e;
@@ -277,27 +322,32 @@ Parse.Cloud.define('sampleCitation', async (request) => {
 
 /* Start project.. */
 Parse.Cloud.define('startProject', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
   var objectId = request.params.objectId;
 
   // Get the project.
   var query = new Parse.Query('Project');
-  var project = await query.get(objectId);
+  var project = await query.get(objectId, { sessionToken });
 
   var config = await Parse.Config.get();
   var progress = config.get('progress');
 
   // Finalize project first.
-  await project.save({'progress': 'finalized',
-                      'finalized': true,
+  await project.save({'finalized': true,
                       'oldProgress': progress.finalized,
-                      'progress': 'queued'});
+                      'progress': 'queued'}, { sessionToken });
 
   // Write citation.
   try {
     var response = await Parse.Cloud.httpRequest({
       method: 'POST',
       url: `http://webhook:5000/project/${objectId}/citation`,
-      followRedirects: true
+      followRedirects: true,
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -315,7 +365,8 @@ Parse.Cloud.define('startProject', async (request) => {
     var response = await Parse.Cloud.httpRequest({
       method: 'POST',
       url: `http://webhook:5000/project/${objectId}/ftp`,
-      followRedirects: true
+      followRedirects: true,
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -328,7 +379,7 @@ Parse.Cloud.define('startProject', async (request) => {
     throw data;
   }
 
-  var jobs = await startProject(project);
+  var jobs = await startProject(project, sessionToken);
 
   return jobs;
 });
@@ -339,14 +390,14 @@ Parse.Cloud.define('jobStarted', async (request) => {
   // Get the job.
   var query = new Parse.Query('Job');
   var job = await query.get(objectId);
-  var project = await job.get('project').fetch();
+  var project = await job.get('project').fetch({ useMasterKey: true });
 
   // Set the job to running.
   await job.save({'status': 'running', 'startedAt': new Date()});
 
   // Set project status if appropriate.
   if (project.get('progress') != 'running') {
-    await project.save({'progress': 'running'});
+    await project.save({'progress': 'running'}, { useMasterKey: true });
     sendEmail(project.id, `Analysis started for project ${project.id}`,
       `Alaska has started analysis of project ${project.id}. Please visit the unique URL for more details.`
     );
@@ -362,14 +413,15 @@ Parse.Cloud.define('jobSuccess', async (request) => {
   // Get the job.
   var query = new Parse.Query('Job');
   var job = await query.get(objectId);
-  var project = await job.get('project').fetch();
+  var project = await job.get('project').fetch({ useMasterKey: true });
 
   // If all the project's jobs are done, set status to success.
-  var jobs = await project.relation('jobs').query().find();
+  var jobs = await project.relation('jobs').query().find({ useMasterKey: true });
+  console.log(jobs);
   var success = true;
   for (var i = 0; i < jobs.length; i++) {
     var otherJob = jobs[i];
-    if (otherJob.get('status') != 'success') {
+    if (otherJob.get('status') != 'success' && otherJob.id != objectId) {
       success = false;
     }
   }
@@ -380,7 +432,7 @@ Parse.Cloud.define('jobSuccess', async (request) => {
     )
   }
 
-  await project.save({'oldProgress': project.get('oldProgress') + 1});
+  await project.save({'oldProgress': project.get('oldProgress') + 1}, { useMasterKey: true });
 
   // Set status to success.
   job.set('status', 'success');
@@ -400,9 +452,9 @@ Parse.Cloud.define('jobError', async (request) => {
   // Get the job.
   var query = new Parse.Query('Job');
   var job = await query.get(objectId);
-  var project = await job.get('project').fetch();
+  var project = await job.get('project').fetch({ useMasterKey: true });
 
-  await project.save({'oldProgress': -project.get('oldProgress'), 'progress': 'error'});
+  await project.save({'oldProgress': -project.get('oldProgress'), 'progress': 'error'}, { useMasterKey: true });
 
   // Set status to error.
   job.set('status', 'error');
@@ -431,6 +483,12 @@ Parse.Cloud.define('jobError', async (request) => {
 });
 
 Parse.Cloud.define('getOutput', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
   var objectId = request.params.objectId;
 
   // Send request to webhook.
@@ -439,6 +497,7 @@ Parse.Cloud.define('getOutput', async (request) => {
       method: 'POST',
       url: 'http://webhook:5000/job/' + objectId + '/output',
       followRedirects: true,
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -455,14 +514,20 @@ Parse.Cloud.define('getOutput', async (request) => {
 });
 
 Parse.Cloud.define('openSleuth', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
   const objectId = request.params.objectId;
 
   const query = new Parse.Query('Project');
-  const project = await query.get(objectId);
+  const project = await query.get(objectId, { sessionToken });
 
   // Check if shiny server is already running.
   if (project.has('shiny')) {
-    var shiny = await project.get('shiny').fetch();
+    var shiny = await project.get('shiny').fetch({ sessionToken });
     if (shiny.has('port')) {
       return {'port': shiny.get('port'), 'wait': 0};
     }
@@ -471,7 +536,7 @@ Parse.Cloud.define('openSleuth', async (request) => {
   // Get available ports.
   var shinyQuery = new Parse.Query('Shiny');
   shinyQuery.select('port');
-  var shinies = await shinyQuery.find();
+  var shinies = await shinyQuery.find({ sessionToken });
   var ports = [];
   for (var i = 0; i < shinies.length; i++) {
     const s = shinies[i];
@@ -492,6 +557,7 @@ Parse.Cloud.define('openSleuth', async (request) => {
       method: 'POST',
       url: `http://webhook:5000/project/${objectId}/sleuth/${port}`,
       followRedirects: true,
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -506,14 +572,20 @@ Parse.Cloud.define('openSleuth', async (request) => {
     // Success. Make new row in Shiny table.
     var Shiny = Parse.Object.extend('Shiny');
     var shiny = new Shiny({'port': port, 'project': project, ...data.result});
-    await shiny.save();
-    await project.save({'shiny': shiny});
+    await shiny.save(null, { sessionToken });
+    await project.save({'shiny': shiny}, { sessionToken });
 
     return {'port': port, 'wait': 5000};
   }
 });
 
 Parse.Cloud.define('compileProject', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
   const objectId = request.params.objectId;
 
   // Send request to webhook.
@@ -522,6 +594,7 @@ Parse.Cloud.define('compileProject', async (request) => {
       method: 'POST',
       url: `http://webhook:5000/project/${objectId}/compile`,
       followRedirects: true,
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -538,6 +611,12 @@ Parse.Cloud.define('compileProject', async (request) => {
 });
 
 Parse.Cloud.define('uploadProject', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+
   const objectId = request.params.objectId;
   const host = request.params.host;
   const username = request.params.username;
@@ -553,7 +632,8 @@ Parse.Cloud.define('uploadProject', async (request) => {
       },
       url: `http://webhook:5000/project/${objectId}/upload`,
       followRedirects: true,
-      body: { host, username, password, geo_username }
+      body: { host, username, password, geo_username },
+      params: { sessionToken }
     });
   } catch (e) {
     return {'error': 'httprequest error'};
@@ -568,6 +648,49 @@ Parse.Cloud.define('uploadProject', async (request) => {
 
   return data.result;
 });
+
+Parse.Cloud.define('emailVerified', async (request) => {
+  const email = request.params.email;
+
+  var response = await Parse.Cloud.httpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    url: 'http://webhook:5000/email/verified',
+    followRedirects: true,
+    body: { email }
+  });
+  var data = response.data;
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  return data.result;
+});
+
+Parse.Cloud.define('sendVerificationEmail', async (request) => {
+  const email = request.params.email;
+
+  var response = await Parse.Cloud.httpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    url: 'http://webhook:5000/email/verification',
+    followRedirects: true,
+    body: { email }
+  });
+  var data = response.data;
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  return data.result;
+});
+
 
 Parse.Cloud.define('sendEmail', async (request) => {
   const objectId = request.params.objectId;
@@ -601,7 +724,7 @@ Parse.Cloud.beforeDelete('Project', async function(request) {
   }
 
   // Remove all related jobs.
-  var jobs = await project.relation('jobs').query().find();
+  var jobs = await project.relation('jobs').query().find({ useMasterKey: true });
   for (var i = 0; i < jobs.length; i++) {
     var job = jobs[i];
     job.destroy();
@@ -618,7 +741,7 @@ Parse.Cloud.beforeDelete('Sample', async function(request) {
   var sample = request.object;
 
   // Remove all related reads.
-  var reads = await sample.relation('reads').query().find();
+  var reads = await sample.relation('reads').query().find({ useMasterKey: true });
   for (var i = 0; i < reads.length; i++) {
     var read = reads[i];
     read.destroy();
@@ -627,7 +750,7 @@ Parse.Cloud.beforeDelete('Sample', async function(request) {
 
 Parse.Cloud.beforeDelete('Shiny', async function(request) {
   var shiny = request.object;
-  var project = await shiny.get('project').fetch();
+  var project = await shiny.get('project').fetch({ useMasterKey: true });
 
   // Send request to webhook to stop container.
   var response = await Parse.Cloud.httpRequest({
@@ -646,7 +769,7 @@ Parse.Cloud.beforeDelete('Shiny', async function(request) {
 // Starts the project.
 // Also call this function to restart an errored project.
 // TODO: detect when new analysis has been added and enqueue that too
-async function startProject(project) {
+async function startProject(project, sessionToken) {
   var job_query = project.relation('jobs').query();
   var jobs = await job_query.ascending('analysis.step').find();
 
@@ -679,8 +802,8 @@ async function startProject(project) {
 
       // Add job to relation.
       project.relation('jobs').add(job);
-      await project.save();
-      project = await project.fetch();
+      await project.save(null, { sessionToken });
+      project = await project.fetch({ sessionToken });
     }
   }
 

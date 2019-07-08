@@ -3,12 +3,10 @@
 source ../shared.env
 
 # build request image
-docker build -t "$DOCKER_REPO:sleuth" \
+docker build -t "$DOCKER_REPO:webhook" \
              --build-arg TIMEZONE="$TIMEZONE" \
-             --build-arg MINICONDA3_URL="$MINICONDA3_URL" \
-             --build-arg SLEUTH_VER="$SLEUTH_VER" \
              --force-rm \
-             sleuth/
+             webhook/
 
 # exit with return value of the above command
 exit $?

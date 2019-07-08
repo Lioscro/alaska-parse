@@ -76,7 +76,7 @@ services:
     volumes:
       - ./src/web:/usr/share/nginx/html:ro
       - data:/alaska/data
-      - ./docker/nginx:/etc/nginx/conf.d:ro
+      - ./src/nginx:/etc/nginx/conf.d:ro
     depends_on:
       - parse-server
     networks:
@@ -136,8 +136,9 @@ services:
       - PARSE_DASHBOARD_SERVER_URL=http://0.0.0.0:1337/parse
       - PARSE_DASHBOARD_APP_ID=${PARSE_APP_ID}
       - PARSE_DASHBOARD_MASTER_KEY=${PARSE_MASTER_KEY}
-      - PARSE_DASHBOARD_USER_ID=admin
-      - PARSE_DASHBOARD_USER_PASSWORD=admin
+      - PARSE_DASHBOARD_USER_ID=${DASHBOARD_ID}
+      - PARSE_DASHBOARD_USER_PASSWORD=${DASHBOARD_PW}
+      - PARSE_DASHBOARD_TIMEZONE=${TIMEZONE}
     depends_on:
       - parse-server
     networks:

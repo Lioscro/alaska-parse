@@ -1,0 +1,12 @@
+version: "2.4"
+
+services:
+  maintenance:
+    image: nginx:stable
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./src/web/maintenance.html:/usr/share/nginx/html/index.html:ro
+      - ./src/web/favicon.png:/usr/share/nginx/html/favicon.png:ro
+      - ./src/web/logo.png:/usr/share/nginx/html/logo.png:ro

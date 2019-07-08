@@ -3,7 +3,6 @@ import tarfile
 PARSE_HOSTNAME = os.getenv('PARSE_HOSTNAME', 'http://parse-server:1337/parse')
 PARSE_APP_ID = os.getenv('PARSE_APP_ID', 'alaska')
 PARSE_MASTER_KEY = os.getenv('PARSE_MASTER_KEY', 'MASTER_KEY')
-print(PARSE_HOSTNAME, PARSE_APP_ID, PARSE_MASTER_KEY)
 
 # Setup for parse_rest
 os.environ["PARSE_API_ROOT"] = PARSE_HOSTNAME

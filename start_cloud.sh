@@ -1,6 +1,8 @@
 #!/bin/bash
 # Script to easily start remote server.
-export SERVER_HOST="13.52.189.218"
+source remote.env
+
 args="$*"
 
+docker pull --all-tags lioscro/alaska
 docker-compose up $args

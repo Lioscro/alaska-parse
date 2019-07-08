@@ -2595,12 +2595,12 @@
         </div>
       </div>
       <div class="row">
-        <div class="col d-flex justify-content-center"><button class="btn btn-primary btn-lg d-flex align-items-center"
-                  type="button"
-                  id="raw_reads_confirm_btn"
-                  style="font-size:1em;margin:0;border-radius:20px;padding:8px 16px;"
-                  data-toggle="modal"
-                  data-target="#sample_names_modal">Yes</button>
+        <div class="col d-flex justify-content-center">
+          <span class="d-inline-block" tabindex="0" data-toggle="tooltip" title="Please wait until all the MD5 checksums have been calculated.">
+            <button class="btn btn-primary btn-lg " style="pointer-events: none;font-size:1em;margin:0;border-radius:20px;padding:8px 16px;" type="button" disabled id="raw_reads_confirm_btn"
+            data-toggle="modal"
+            data-target="#sample_names_modal">Yes</button>
+          </span>
           <button class="btn btn-info btn-lg d-flex align-items-center ml-5"
                   type="button"
                   id="refetch_reads_btn_1"
@@ -2783,6 +2783,100 @@
       </div>
     </div>
   </div>
+
+  <!--Login Modal-->
+  <div class="modal fade" id="login" tabindex="-1" role="dialog" data-backdrop="static"
+  data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header alert-primary">
+          <h5 class="modal-title" id="exampleModalLongTitle">
+            <i class="fas fa-inbox"></i>
+            Please login</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="form-group">
+              <label for="login_email">Email address</label>
+              <input type="email" class="form-control" id="login_email" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+              <label for="login_password">Password</label>
+              <input type="password" class="form-control" id="login_password" placeholder="Password">
+            </div>
+          </form>
+          <div class="modal-footer">
+            <button id="login_btn" type="submit" class="btn btn-primary">Login</button>
+            <button id="login_close_btn" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Signup Modal -->
+  <div class="modal fade" id="signup" tabindex="-1" role="dialog" data-backdrop="static"
+  data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header alert-primary">
+          <h5 class="modal-title" id="exampleModalLongTitle">
+            <i class="fas fa-inbox"></i>
+            First things first</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Before we begin, we need to verify your email so that only you have
+          access to your project!</p>
+          <form>
+            <div class="form-group">
+              <label for="signup_email">What is your email address?</label>
+              <div class="input-group">
+                <input type="email" class="form-control" id="signup_email" aria-describedby="signup_email_text" placeholder="Enter email">
+                <div class="input-group-prepend" id="signup_email_prepend" style="display:none">
+                  <span class="input-group-text">Verified</span>
+                </div>
+              </div>
+              <small id="signup_email_text" class="form-text text-muted">We never share your email with anyone else.</small>
+            </div>
+        <div id="signup_email_sent" class="collapse">
+          <p class="signup_email_sent">Alaska has sent an email to the above email address.
+          Please click the link in the email to continue. <strong>DO NOT</strong>
+          close this page. This page will automatically refresh when your email has been verified.</p>
+          Waiting for email verification...
+          <div class="spinner-border spinner-border-sm" role="status">
+            <span class="sr-only">Waiting...</span>
+          </div>
+        </div>
+        <div id="signup_verified" class="collapse">
+          <hr></hr>
+          <h5>Now let's set your password.</h5>
+          <div class="form-group">
+              <label for="signup_password">Password</label>
+              <small id="signup_password_text" class="form-text text-muted">Must be 8-20 characters.</small>
+              <input type="password" class="form-control" id="signup_password" placeholder="Password">
+              <input type="password" class="form-control mt-1" id="signup_password_again" placeholder="Re-enter password">
+          </div>
+        </div>
+      </form>
+        <div class="modal-footer">
+          <button id="signup_email_verify_btn" type="submit" class="btn btn-primary ld-ext-right">
+            Verify
+            <div class="ld ld-ring ld-spin"></div>
+          </button>
+          <button id="signup_password_btn" type="submit" class="btn btn-primary" style="display:none">Next</button>
+          <button id="signup_close_btn" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 
 </html>

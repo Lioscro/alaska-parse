@@ -40,11 +40,11 @@ RUN conda config --add channels defaults \
     && conda config --add channels bioconda \
     && conda install fontconfig \
     && conda install conda-forge::openjdk \
+    && conda install multiqc==$MULTIQC_VER \
     && conda install bowtie2==$BOWTIE2_VER \
     && conda install samtools==$SAMTOOLS_VER \
     && conda install fastqc==$FASTQC_VER \
     && conda install rseqc==$RSEQC_VER \
-    && conda install multiqc==$MULTIQC_VER \
     && conda install -c r r
 
 RUN pip install git+https://github.com/milesrichardson/ParsePy.git

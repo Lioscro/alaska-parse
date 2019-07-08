@@ -1,8 +1,8 @@
 #!/bin/bash
-source set_env_variables.sh
+source ../shared.env
 
 # build qc image
-docker build -t "alaska-qc" \
+docker build -t "$DOCKER_REPO:qc" \
              --build-arg TIMEZONE="$TIMEZONE" \
              --build-arg MINICONDA3_URL="$MINICONDA3_URL" \
              --build-arg BOWTIE2_VER="$BOWTIE2_VER" \

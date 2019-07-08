@@ -8,6 +8,8 @@
  *
  */
 
+const PUBLICHOST = '0.0.0.0';
+
 var project;
 var samples;
 var reads;
@@ -149,7 +151,7 @@ function _setServerStatusBadge(badge, message) {
  */
 function _initializeParse() {
   console.log('initializing parse server');
-  Parse.serverURL = 'http://0.0.0.0:1337/parse';
+  Parse.serverURL = `http://${PUBLICHOST}:1337/parse`;
   Parse.initialize('alaska');
 }
 
@@ -180,6 +182,220 @@ function _setServerStatus() {
   });
 }
 
+function checkEmailVerified(email, sent, password, btn, input, prepend) {
+  console.log('checking');
+  _runCloudFunction('emailVerified', function (result) {
+    if (result) {
+      sent.on('hidden.bs.collapse', function () {
+        password.collapse('show');
+        $(this).off('hidden.bs.collapse');
+      });
+
+      sent.collapse('hide');
+      btn.show();
+      input.addClass('is-valid');
+      prepend.show();
+    } else {
+      setTimeout(checkEmailVerified, 3000, email, sent, password, btn, input, prepend);
+    }
+  }, { email })
+}
+
+function setupSignupModal() {
+  var modal = $('#signup');
+  var emailVerifyBtn = modal.find('#signup_email_verify_btn');
+  var passwordBtn = modal.find('#signup_password_btn');
+  var closeBtn = modal.find('#signup_close_btn');
+
+  var emailPrepend = modal.find('#signup_email_prepend');
+
+  var emailSentCollapse = modal.find('#signup_email_sent');
+  var passwordCollapse = modal.find('#signup_verified');
+
+  var emailInput = modal.find('#signup_email');
+  var emailText = modal.find('#signup_email_text');
+  var passwordInput = modal.find('#signup_password');
+  var passwordInput2 = modal.find('#signup_password_again');
+  var passwordText = modal.find('#signup_password_text');
+
+  // When email verify button is clicked, check if the input is a valid
+  // email and then send an email.
+  emailVerifyBtn.click({
+    modal: modal,
+    input: emailInput,
+    text: emailText,
+    prepend: emailPrepend,
+    sent: emailSentCollapse,
+    password: passwordCollapse,
+    close: closeBtn,
+    passwordBtn: passwordBtn
+  }, function (e) {
+    var btn = $(this);
+    var input = e.data.input;
+    var text = e.data.text;
+    var modal = e.data.modal;
+    var sent = e.data.sent;
+    var prepend = e.data.prepend;
+    var close = e.data.close;
+    var password = e.data.password;
+    var passwordBtn = e.data.passwordBtn;
+    var val = input.val();
+
+    if (!isEmail(val)) {
+      input.addClass('is-invalid');
+      text.text('Please input a valid email.');
+    } else {
+      input.removeClass('is-invalid');
+      text.text('');
+
+      // Check if the email is already registered as a username.
+      var query = new Parse.Query(Parse.User);
+      query.equalTo('username', val);
+      query.find().then(function (results) {
+        console.log(results);
+        if (results.length > 0) {
+          modal.on('hidden.bs.modal', function () {
+            // User already exists. Go to Login modal.
+            var login_modal = $('#login');
+            login_modal.find('#login_email').val(val);
+            login_modal.modal('show');
+
+            $(this).off('hidden.bs.modal');
+          });
+
+          modal.modal('hide');
+        } else {
+          // Otherwise, we need to make a new user.
+          input.prop('disabled', true);
+
+          btn.prop('disabled', true);
+          _runCloudFunction('sendVerificationEmail', function (results) {
+            btn.hide();
+            close.hide();
+            sent.collapse('show');
+
+            checkEmailVerified(val, sent, password, passwordBtn, input, prepend);
+          }, {email: val});
+        }
+      }, function (error) {
+        _showErrorModal(error);
+      });
+    }
+  });
+
+  passwordBtn.click({
+    modal: modal,
+    emailInput: emailInput,
+    passwordInput: passwordInput,
+    passwordInput2: passwordInput2,
+    passwordText: passwordText
+  }, function (e) {
+    var modal = e.data.modal;
+    var emailInput = e.data.emailInput;
+    var passwordInput = e.data.passwordInput;
+    var passwordInput2 = e.data.passwordInput2;
+    var passwordText = e.data.passwordText;
+
+    var email = emailInput.val();
+    var password = passwordInput.val();
+
+    // Make sure two passwords match.
+    if (password != passwordInput2.val()) {
+      passwordInput.addClass('is-invalid');
+      passwordInput2.addClass('is-invalid');
+      passwordText.text('Passwords do not match.');
+    } else if (password.length < 8 || password.length > 20) {
+      passwordInput.addClass('is-invalid');
+      passwordInput2.addClass('is-invalid');
+      passwordText.text('Must be 8-20 characters.');
+    } else {
+      passwordInput.removeClass('is-invalid');
+      passwordInput2.removeClass('is-invalid');
+      passwordInput.prop('disabled', true);
+      passwordInput2.prop('disabled', true);
+
+      // Make new user.
+      newUser(email, password, function () {
+        console.log(user);
+        modal.modal('hide');
+        // Make new project.
+        newProject();
+      });
+    }
+  });
+}
+
+async function login(email, password, callback = function () {}, err = function () {}) {
+  Parse.User.logIn(email, password).then(function (result) {
+    callback();
+  }, function (error) {
+    err();
+  });
+}
+
+async function newUser(email, password, callback = function () {}) {
+  console.log(`signing up new user with email ${email}`);
+
+  var user = new Parse.User();
+  user.set('username', email);
+  user.set('password', password);
+
+  try {
+    await user.signUp();
+    callback();
+  } catch (error) {
+    _showErrorModal(error);
+  }
+}
+
+function setupLoginModal() {
+  var modal = $('#login');
+  var emailInput = modal.find('#login_email');
+  var passwordInput = modal.find('#login_password');
+  var loginBtn = modal.find('#login_btn');
+
+  loginBtn.click({
+    modal, emailInput, passwordInput
+  }, function (e) {
+    var modal = e.data.modal;
+    var emailInput = e.data.emailInput;
+    var passwordInput = e.data.passwordInput;
+    var loginBtn = $(this);
+
+    var email = emailInput.val();
+    var password = passwordInput.val();
+
+    emailInput.prop('disabled', true);
+    passwordInput.prop('disabled', true);
+    loginBtn.prop('disabled', true);
+
+    login(email, password, function () {
+      emailInput.removeClass('is-invalid');
+      passwordInput.removeClass('is-invalid');
+      loginBtn.prop('disabled', false);
+
+      window.location.reload(false);
+    }, function () {
+      emailInput.prop('disabled', false);
+      passwordInput.prop('disabled', false);
+
+      emailInput.addClass('is-invalid');
+      passwordInput.addClass('is-invalid');
+      loginBtn.prop('disabled', false);
+    });
+  });
+}
+
+function checkLogin(callback = function () {}) {
+  var user = Parse.User.current();
+  if (user == null || user == undefined) {
+    $('#login').modal('show');
+  } else {
+    callback();
+  }
+}
+
+
 /**
  * Initialize alaska.
  */
@@ -190,6 +406,9 @@ function initialize() {
   // Set server status badge.
   _setServerStatus();
 
+  setupSignupModal();
+  setupLoginModal();
+
   // initialize tooltips
   $('[data-toggle="tooltip"]').tooltip();
 
@@ -197,7 +416,9 @@ function initialize() {
   $('[data-toggle="popover"]').popover();
 
   // Add on click handler for start project button.
-  $('#new_proj_btn').click(newProject);
+  $('#new_proj_btn').click(function () {
+    checkLogin(newProject);
+  });
 
   // Make global copies.
   raw_reads_div = $('#raw_reads_div').clone(true);
@@ -389,7 +610,7 @@ function _showSuccessCheck(button) {
  * Start a new project.
  */
 function newProject() {
-  var btn = $(this);
+  var btn = $('#new_proj_btn');
 
   // Only run if the global project object is empty.
   if (project == null || project == undefined) {
@@ -413,7 +634,7 @@ function newProject() {
         _showErrorModal('Cloud function newProject returned something without '
                         + 'an id.\n' + response.stringify())
       }
-    });
+    }, {email: Parse.User.current().get('username')});
   } else {
     btn.prop('disabled', true);
   }
@@ -600,6 +821,24 @@ function _getMd5(path, td, read) {
 
     td.text(response);
     td.children('div').hide();
+
+    var done = true;
+    for (var dir in reads) {
+      var group = reads[dir];
+
+      for (var i = 0; i < group.length; i++) {
+        var r = group[i];
+        if (r.md5Checksum == null || r.md5Checksum == undefined) {
+          done = false;
+        }
+      }
+    }
+    if (done) {
+      var btn = $('#raw_reads_confirm_btn');
+      btn.css('pointer-events', 'auto');
+      btn.prop('disabled', false);
+      btn.parent().tooltip('dispose');
+    }
   }, {'path': path});
 }
 
@@ -715,7 +954,7 @@ function _getNamesAndSetSamples() {
   var input_id = 'name_input_SAMPLEID';
   var valid = true;
 
-  var samples = {};
+  var names = {};
   for (var name in reads) {
     var input = $('#' + input_id.replace('SAMPLEID', name));
     var val = input.val();
@@ -750,8 +989,7 @@ function _getNamesAndSetSamples() {
 
     // Set samples.
     _runCloudFunction('setSamples', function (response) {
-      // Then, refetch project because it was updated with these samples.
-      _refetchProject(function (response) {
+      _loadAll(project.id, function() {
         showMetaInput(function () {
           modal.modal('hide');
         });
@@ -1106,6 +1344,10 @@ function showMetaInput(callback = function () {}) {
       $('#proj_meta_header').show();
       $('#proj_meta').show();
 
+      var input = $('#proj_corresponding_email');
+      input.val(Parse.User.current().get('username'));
+      input.prop('disabled', true);
+
       callback();
     });
   });
@@ -1375,10 +1617,10 @@ function _setupProgressRow(code, infoRow, outputRow) {
 }
 
 function _pollProject() {
-  _setProjectProgress();
+  _refetchProject(_setProjectProgress);
 
   clearInterval(progressInterval);
-  progressInterval = setInterval(_refetchProject, 5000, _setProjectProgress);
+  progressInterval = setInterval(_refetchProject, 10000, _setProjectProgress);
 }
 
 function _pollJobs() {
@@ -1388,12 +1630,12 @@ function _pollJobs() {
     if (code in jobIntervals) {
       clearInterval(jobIntervals[code]);
     }
-    jobIntervals[code] = setInterval(_setRowProgress, 3000, code);
+    jobIntervals[code] = setInterval(_setRowProgress, 10000, code);
   }
 }
 
 function downloadCitation() {
-  window.open(`webook/project/${project.id}/file/citation`, '_blank');
+  window.open(`webhook/project/${project.id}/file/citation`, '_blank');
 }
 
 function downloadProject() {
@@ -1447,10 +1689,11 @@ function showProgress() {
         jobOrder.push(code);
       }
 
-      modal.modal('hide');
+      $('.output_collapse').collapse('hide');
+
+      _pollJobs();
+      _pollProject();
     });
-    _pollJobs();
-    _pollProject();
   });
 
   progress_container.find('#info_download_btn').click(downloadCitation);
@@ -1485,9 +1728,9 @@ function showProgress() {
     _showLoadingSpinner(btn);
 
     // Run function to compile project.
-    _runCloudFunction('compileProject', function () {}, {objectId: project.id});
-
-    _pollProject();
+    _runCloudFunction('compileProject', function () {
+      _pollProject();
+    }, {objectId: project.id});
   });
 
   // Set submit button.
@@ -1779,7 +2022,7 @@ function get_output(type, textarea, ul) {
 }
 
 function set_output_listener_for_collapse(type, collapse, textarea, ul, badge,
-                                          t=1000) {
+                                          t=3000) {
   collapse.on('show.bs.collapse', {
     'type': type,
     'badge': badge,
@@ -7072,6 +7315,6 @@ $(document).ready(function() {
     initialize();
 
     // Parse any url params.
-    parseUrlParams();
+    checkLogin(parseUrlParams);
   }
 });
