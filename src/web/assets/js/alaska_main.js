@@ -454,6 +454,8 @@ function parseUrlParams() {
     var objectId = params.get('id');
     console.log(objectId);
 
+    document.title = `Alaska: ${objectId}`;
+
     // Go to whatever step we need to go to.
     _loadAll(objectId, _resumeProject);
   }
