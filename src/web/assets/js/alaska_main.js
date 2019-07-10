@@ -7,9 +7,6 @@
  * Alaska portal.
  *
  */
-
-const PUBLICHOST = '0.0.0.0';
-
 var project;
 var samples;
 var reads;
@@ -417,7 +414,11 @@ function initialize() {
 
   // Add on click handler for start project button.
   $('#new_proj_btn').click(function () {
-    checkLogin(newProject);
+    if (Parse.User.current() == null || Parse.User.current() == undefined) {
+      $('#signup').modal('show');
+    } else {
+      newProject();
+    }
   });
 
   // Make global copies.
@@ -454,10 +455,12 @@ function parseUrlParams() {
     var objectId = params.get('id');
     console.log(objectId);
 
-    document.title = `Alaska: ${objectId}`;
+    checkLogin(function () {
+      document.title = `Alaska: ${objectId}`;
 
-    // Go to whatever step we need to go to.
-    _loadAll(objectId, _resumeProject);
+      // Go to whatever step we need to go to.
+      _loadAll(objectId, _resumeProject);
+    });
   }
 }
 
@@ -7314,9 +7317,15 @@ $(document).ready(function() {
 
   } else {
     // Initialize
-    initialize();
+    try {
+      initialize();
+    } catch (error) {
+      var statusBadge = $('#server_status_badge');
+      _setServerStatusBadge(statusBadge, 'offline');
+      _showErrorModal(JSON.stringify(error));
+    }
 
     // Parse any url params.
-    checkLogin(parseUrlParams);
+    parseUrlParams();
   }
 });

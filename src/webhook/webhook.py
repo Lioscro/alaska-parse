@@ -41,6 +41,7 @@ from upload import upload
 
 compiling = {}
 uploading = {}
+index_container = None
 def sigterm_handler(signal, frame):
     print('SIGTERM received', file=sys.stderr, flush=True)
     print(compiling, uploading, file=sys.stderr, flush=True)
@@ -59,6 +60,18 @@ def sigterm_handler(signal, frame):
             project = Project.Query.get(objectId=objectId)
             project.progress = 'compiled'
             project.save()
+
+    if index_container is not None:
+        try:
+            print('sending SIGTERM to container {}'.format(index_container.name),
+                  flush=True)
+            index_container.stop()
+        except Exception as e:
+            print('error while stopping container', flush=True)
+        finally:
+            index_container.remove(force=True)
+
+    sys.exit(0)
 
 
 # Handle SIGTERM gracefully.
@@ -177,6 +190,11 @@ def organismNew():
                     organism = Organism(genus=genus, species=species,
                                         path=species_path)
                     organism.save()
+
+                    if genus not in organisms:
+                        organisms[genus] = {}
+                    if species not in organisms[genus]:
+                        organisms[genus][species] = organism
                 else:
                     # Otherwise, the organism already exists.
                     found = Organism.Query.filter(genus=genus, species=species)
@@ -237,7 +255,6 @@ def organismNew():
                         organism.relation('references').add([reference])
 
     return jsonify({'status': 'done'})
-
 
 indexThread = None
 @app.route('/reference/build', methods=['POST'])
@@ -314,11 +331,12 @@ def _referenceBuild(reference):
 
     # Docker client.
     client = docker.from_env()
-    container = client.containers.run(index_image, cmd, detach=False, stderr=True,
+    index_container = client.containers.run(index_image, cmd, detach=False, stderr=True,
                                       auto_remove=True, volumes=volumes,
                                       working_dir=wdir, cpuset_cpus=cpus,
                                       network=network, environment=environment,
                                       name=name)
+    index_container = None
 
 @app.route('/project/<objectId>/initialize', methods=['POST'])
 def project_initialize(objectId):
@@ -1037,7 +1055,6 @@ def cleanup_progress():
     for project in projects:
         project.progress = 'compiled'
         project.save()
-
 
 if __name__ == '__main__':
     print('Waiting 5 seconds for server.')

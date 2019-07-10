@@ -125,4 +125,5 @@ dmypy.json
 
 .DS_Store
 data/
-db/
+# db/
+env.js

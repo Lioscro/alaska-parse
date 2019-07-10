@@ -72,7 +72,7 @@ services:
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
     ports:
-      - "80:80"
+      - "${PORT}:80"
     volumes:
       - ./src/web:/usr/share/nginx/html:ro
       - data:/alaska/data
