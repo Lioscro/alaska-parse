@@ -3,7 +3,6 @@ version: "2.4"
 services:
   maintenance:
     image: nginx:stable
-    command: /start.sh
     restart: always
     ports:
       - "80:80"
@@ -11,4 +10,3 @@ services:
       - ./src/web/maintenance.html:/usr/share/nginx/html/index.html:ro
       - ./src/web/favicon.png:/usr/share/nginx/html/favicon.png:ro
       - ./src/web/logo.png:/usr/share/nginx/html/logo.png:ro
-      - ./src/nginx/start_remote.sh:/start.sh

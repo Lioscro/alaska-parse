@@ -66,21 +66,17 @@ services:
   # NGINX server
   nginx:
     image: nginx:stable
-    command: /start.sh
     restart: always
     environment:
       - PARSE_HOSTNAME=${PARSE_HOSTNAME}
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
-      - EMAIL=${EMAIL}
-      - PUBLICHOST=${PUBLICHOST}
     ports:
       - "${PORT}:80"
     volumes:
       - ./src/web:/usr/share/nginx/html:ro
       - data:/alaska/data
-      - ./src/nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./src/nginx/start.sh:/start.sh
+      - ./src/nginx:/etc/nginx/conf.d:ro
     depends_on:
       - parse-server
     networks:
