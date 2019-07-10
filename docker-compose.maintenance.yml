@@ -5,6 +5,9 @@ services:
     image: nginx:stable
     command: /start.sh
     restart: always
+    environment:
+      - EMAIL=${EMAIL}
+      - PUBLICHOST=${PUBLICHOST}
     ports:
       - "80:80"
     volumes:
