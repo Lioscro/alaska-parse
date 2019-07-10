@@ -193,7 +193,7 @@ function checkEmailVerified(email, sent, password, btn, input, prepend) {
       input.addClass('is-valid');
       prepend.show();
     } else {
-      setTimeout(checkEmailVerified, 3000, email, sent, password, btn, input, prepend);
+      setTimeout(checkEmailVerified, 5000, email, sent, password, btn, input, prepend);
     }
   }, { email })
 }
@@ -313,7 +313,6 @@ function setupSignupModal() {
 
       // Make new user.
       newUser(email, password, function () {
-        console.log(user);
         modal.modal('hide');
         // Make new project.
         newProject();
