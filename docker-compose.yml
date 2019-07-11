@@ -95,7 +95,7 @@ services:
       - "30000-30099:30000-30099"
       - "21:21"
     volumes:
-      - ./data/ftp:/etc/pure-ftpd
+      - ./data/ftp/passwd:/etc/pure-ftpd/passwd
       - data:/home/ftpusers
     depends_on:
       - parse-server
