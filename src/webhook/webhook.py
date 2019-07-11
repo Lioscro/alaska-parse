@@ -537,11 +537,13 @@ def _project_initialize(objectId):
     data_path = config['dataPath']
     project_dir = config['projectDir']
     read_dir = config['readDir']
+    ftp_path = config['ftpPath']
     project_archive = config['projectArchive']
 
     # Make directories.
     root_path = os.path.join(data_path, project_dir, objectId)
     read_path = os.path.join(root_path, read_dir)
+    ftp_read_path = os.path.join(ftp_path, project_dir, objectId, read_dir)
     paths = {'root': root_path,
              'read': read_path}
 
@@ -562,8 +564,8 @@ def _project_initialize(objectId):
     passwd = _generate_password(5)
 
     # begin container variables
-    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
-          + '-u ftpuser -d {}"').format(passwd, passwd, objectId, read_path)
+    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m -f '
+          + '-u ftpuser -d {}"').format(passwd, passwd, objectId, ftp_read_path)
     print(cmd, file=sys.stderr)
 
     try:
@@ -589,9 +591,12 @@ def _project_ftp(objectId):
     project = Project.Query.get(objectId=objectId)
 
     config = Config.get()
+    ftp_path = config['ftpPath']
+    project_dir = config['projectDir']
+    ftp_project_path = os.path.join(ftp_path, project_dir, objectId)
 
     # Change ftp home directory to the project root.
-    cmd = ('pure-pw usermod {} -d {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd').format(objectId, project.paths['root'])
+    cmd = ('pure-pw usermod {} -d {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd').format(objectId, ftp_project_path)
     try:
         ftp_name = config['repoName'] + '_' + config['ftpService'] + '_1'
         client = docker.from_env()
