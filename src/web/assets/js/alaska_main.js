@@ -175,7 +175,8 @@ function _setServerStatus() {
     console.log(error);
 
     _setServerStatusBadge(statusBadge, 'offline');
-    _showErrorModal(error.stringify());
+    _showErrorModal(error);
+    Parse.User.logOut();
   });
 }
 
