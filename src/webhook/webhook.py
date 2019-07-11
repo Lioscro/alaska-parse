@@ -552,7 +552,7 @@ def _project_initialize(objectId):
         return jsonify({'error': 'root folder exists'})
 
     for _, path in paths.items():
-        os.makedirs(path, mode=0777, exist_ok=True)
+        os.makedirs(path, exist_ok=True)
 
     # Make UPLOAD_HERE file
     upload_here = os.path.join(read_path, 'UPLOAD_HERE')
@@ -564,8 +564,8 @@ def _project_initialize(objectId):
     passwd = _generate_password(5)
 
     # begin container variables
-    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
-          + '-u ftpuser -d {}"').format(passwd, passwd, objectId, ftp_read_path)
+    cmd = ('/bin/bash -c "chmod 0777 {} && (echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
+          + '-u ftpuser -d {}"').format(ftp_read_path, passwd, passwd, objectId, ftp_read_path)
     print(cmd, file=sys.stderr)
 
     try:
