@@ -564,7 +564,7 @@ def _project_initialize(objectId):
     passwd = _generate_password(5)
 
     # begin container variables
-    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m -f '
+    cmd = ('/bin/bash -c "(echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
           + '-u ftpuser -d {}"').format(passwd, passwd, objectId, ftp_read_path)
     print(cmd, file=sys.stderr)
 
