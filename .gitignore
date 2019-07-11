@@ -125,6 +125,6 @@ dmypy.json
 
 .DS_Store
 data/
-db/
+db/diagnostic.data
 env.js
 secret.env
