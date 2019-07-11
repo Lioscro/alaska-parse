@@ -543,7 +543,8 @@ def _project_initialize(objectId):
     # Make directories.
     root_path = os.path.join(data_path, project_dir, objectId)
     read_path = os.path.join(root_path, read_dir)
-    ftp_read_path = os.path.join(ftp_path, project_dir, objectId, read_dir)
+    ftp_project_path = os.path.join(ftp_path, project_dir, objectId)
+    ftp_read_path = os.path.join(ftp_project_path, read_dir)
     paths = {'root': root_path,
              'read': read_path}
 
@@ -564,8 +565,8 @@ def _project_initialize(objectId):
     passwd = _generate_password(5)
 
     # begin container variables
-    cmd = ('/bin/bash -c "chmod 0777 {} && (echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
-          + '-u ftpuser -d {}"').format(ftp_read_path, passwd, passwd, objectId, ftp_read_path)
+    cmd = ('/bin/bash -c "chmod -R 0777 {} && (echo {}; echo {}) | pure-pw useradd {} -m -f /etc/pure-ftpd/passwd/pureftpd.passwd '
+          + '-u ftpuser -d {}"').format(ftp_project_path, passwd, passwd, objectId, ftp_read_path)
     print(cmd, file=sys.stderr)
 
     try:
@@ -622,8 +623,8 @@ def _project_delete(objectId):
     try:
         if os.path.isdir(project.paths['root']):
             shutil.rmtree(project.paths['root'])
-    except:
-        pass
+    except Exception as e:
+        print(e)
 
     return jsonify({'result': 'success'})
 
