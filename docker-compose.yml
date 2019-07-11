@@ -114,6 +114,7 @@ services:
       - PARSE_SERVER_DATABASE_URI=mongodb://mongo:27017/alaska
       - PARSE_SERVER_URL=${PARSE_HOSTNAME}
       - PARSE_SERVER_CLOUD=/parse-server/cloud/main.js
+      - PARSE_SERVER_SESSION_LENGTH=21600
     ports:
       - "1337:1337"
     depends_on:
