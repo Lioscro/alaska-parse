@@ -552,7 +552,7 @@ def _project_initialize(objectId):
         return jsonify({'error': 'root folder exists'})
 
     for _, path in paths.items():
-        os.makedirs(path, mode=0o777, exist_ok=True)
+        os.makedirs(path, mode=0777, exist_ok=True)
 
     # Make UPLOAD_HERE file
     upload_here = os.path.join(read_path, 'UPLOAD_HERE')
