@@ -35,6 +35,7 @@ services:
       - PARSE_HOSTNAME=${PARSE_HOSTNAME}
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
+      - VERSION=${VERSION}
     ports:
       - "5000:5000"
     volumes:
