@@ -20,6 +20,12 @@ Parse.Cloud.define('dequeue', async (request) => {
   return result;
 });
 
+Parse.Cloud.define('setVersion', async (request) => {
+  const version = request.params.version;
+
+  await Parse.Config.save({ version });
+});
+
 /* Cloud function to fetch dictionary of organisms. */
 Parse.Cloud.define('getOrganismsDict', async (request) => {
   const query = new Parse.Query('Organism');
