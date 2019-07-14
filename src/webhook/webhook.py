@@ -19,6 +19,7 @@ from flask import Flask, request, jsonify, send_file, send_from_directory
 from urllib.parse import unquote_plus
 from threading import Thread
 
+VERSION = os.getenv('VERSION', 'unknown version')
 PARSE_HOSTNAME = os.getenv('PARSE_HOSTNAME', 'http://parse-server:1337/parse')
 PARSE_APP_ID = os.getenv('PARSE_APP_ID', 'alaska')
 PARSE_MASTER_KEY = os.getenv('PARSE_MASTER_KEY', 'MASTER_KEY')
@@ -1062,9 +1063,16 @@ def cleanup_progress():
         project.progress = 'compiled'
         project.save()
 
+def set_version():
+    print('setting version to {}'.format(VERSION))
+    Function('setVersion')(version=VERSION)
+
 if __name__ == '__main__':
     print('Waiting 5 seconds for server.')
     time.sleep(5)
+
+    # Set version.
+    set_version()
 
     # Cleanup progress.
     cleanup_progress()
