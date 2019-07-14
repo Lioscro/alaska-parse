@@ -120,7 +120,7 @@ Parse.Cloud.define('newProject', async (request) => {
 
   if ('result' in data) {
     sendEmail(project.id, `New project ${project.id}`,
-      `Alaska has initialized a new project ${project.id}. Please visit the unique URL for more details.`);
+      `Alaska has initialized a new project ${project.id}. Please visit the unique URL for instructions on how to upload your reads.`);
 
     await project.save(data.result, {sessionToken: user.getSessionToken()});
     user.relation('projects').add(project);
