@@ -1002,7 +1002,7 @@ def _project_email(objectId, subject, message):
     email_path = os.path.join(data_path, email_dir)
 
     datetime = (dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                + ' Pacific Time')
+                + ' UTC')
     url = 'http://{}/?id={}'.format(host, objectId)
     fr = 'AlaskaProject_{}@{}'.format(objectId, host)
     to = project.email
