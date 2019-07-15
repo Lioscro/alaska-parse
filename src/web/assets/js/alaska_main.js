@@ -100,6 +100,12 @@ function _showErrorModal(message) {
 
   if (typeof(message) == 'object') {
     output.text(JSON.stringify(message));
+
+    // Logout if the token has expired.
+    if (message.code == 209) {
+      Parse.User.logOut();
+      window.location.reload(false);
+    }
   } else {
     output.text(message);
   }
@@ -7322,8 +7328,6 @@ $(document).ready(function() {
     } catch (error) {
       var statusBadge = $('#server_status_badge');
       _setServerStatusBadge(statusBadge, 'offline');
-      // Logout.
-      Parse.User.logOut();
       _showErrorModal(JSON.stringify(error));
     }
 
