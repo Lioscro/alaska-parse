@@ -7322,8 +7322,6 @@ $(document).ready(function() {
     } catch (error) {
       var statusBadge = $('#server_status_badge');
       _setServerStatusBadge(statusBadge, 'offline');
-      // Logout.
-      Parse.User.logOut();
       _showErrorModal(JSON.stringify(error));
     }
 
