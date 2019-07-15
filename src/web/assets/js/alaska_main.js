@@ -100,6 +100,12 @@ function _showErrorModal(message) {
 
   if (typeof(message) == 'object') {
     output.text(JSON.stringify(message));
+
+    // Logout if the token has expired.
+    if (message.code == 209) {
+      Parse.User.logOut();
+      window.location.reload(false);
+    }
   } else {
     output.text(message);
   }
