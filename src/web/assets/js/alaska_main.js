@@ -1357,7 +1357,6 @@ function showMetaInput(callback = function () {}) {
 
       var input = $('#proj_corresponding_email');
       input.val(Parse.User.current().get('username'));
-      input.prop('disabled', true);
 
       callback();
     });
