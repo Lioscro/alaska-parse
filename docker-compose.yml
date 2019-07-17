@@ -64,12 +64,6 @@ services:
       - parse-server
     networks:
       - backend
-  certbot:
-    image: certbot/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
   # NGINX server
   nginx:
     image: nginx:stable
@@ -80,13 +74,10 @@ services:
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
     ports:
       - "${PORT}:80"
-      - "443:443"
     volumes:
       - ./src/web:/usr/share/nginx/html:ro
       - data:/alaska/data
-      - ./src/nginx:/etc/nginx/conf.d
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
+      - ./src/nginx:/etc/nginx/conf.d:ro
     depends_on:
       - parse-server
     networks:
