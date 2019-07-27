@@ -7,6 +7,8 @@
  * Alaska portal.
  *
  */
+const SENTRY_DSN = 'http://fc223a48089d432aa76ccfbd7a4551b1@alaska.caltech.edu:9000/7';
+
 var project;
 var samples;
 var reads;
@@ -111,6 +113,11 @@ function logout(reload = true) {
  * Displays the error modal with a particular message.
  */
 function _showErrorModal(message) {
+  if (typeof(message) == 'string') {
+    Sentry.captureMessage(message);
+  } else {
+    Sentry.captureException(message);
+  }
   console.log(message);
   $('.modal').modal('hide');
 
@@ -7515,6 +7522,7 @@ var testing = false;
 
 // To run when page is loaded.
 $(document).ready(function() {
+  Sentry.init({ dsn: SENTRY_DSN });
   var pathname = window.location.pathname;
   // Do these only if we are at the home page.
   if (pathname.includes('about.html')) {
