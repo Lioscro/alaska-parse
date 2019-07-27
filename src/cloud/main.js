@@ -697,6 +697,88 @@ Parse.Cloud.define('sendVerificationEmail', async (request) => {
   return data.result;
 });
 
+Parse.Cloud.define('resetPassword', async (request) => {
+  const email = request.params.email;
+  const password = request.params.password;
+
+  // Check
+  var response = await Parse.Cloud.httpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    url: 'http://webhook:5000/reset/check',
+    followRedirects: true,
+    body: { email }
+  });
+  var data = response.data;
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  if (data.result) {
+    var query = new Parse.Query(Parse.User);
+    query.equalTo('username', email);
+    var user = await query.first({ useMasterKey: true });
+    user.setPassword(password, { useMasterKey: true });
+    await user.save(null, { useMasterKey: true });
+
+    var response = await Parse.Cloud.httpRequest({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      url: 'http://webhook:5000/reset/notify',
+      followRedirects: true,
+      body: { email }
+    });
+  }
+
+  return data.result;
+});
+
+Parse.Cloud.define('resetVerified', async (request) => {
+  const email = request.params.email;
+
+  var response = await Parse.Cloud.httpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    url: 'http://webhook:5000/reset/verified',
+    followRedirects: true,
+    body: { email }
+  });
+  var data = response.data;
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  return data.result;
+});
+
+Parse.Cloud.define('sendResetEmail', async (request) => {
+  const email = request.params.email;
+
+  var response = await Parse.Cloud.httpRequest({
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    url: 'http://webhook:5000/reset/verification',
+    followRedirects: true,
+    body: { email }
+  });
+  var data = response.data;
+
+  if (!('result' in data) ){
+    throw data;
+  }
+
+  return data.result;
+});
 
 Parse.Cloud.define('sendEmail', async (request) => {
   const objectId = request.params.objectId;

@@ -2815,6 +2815,7 @@
             <div class="form-group">
               <label for="login_password">Password</label>
               <input type="password" class="form-control" id="login_password" placeholder="Password">
+              <button id="forgot_password_btn" type="button" class="btn btn-link"><small>I forgot my password!</small></button>
             </div>
           </form>
           <div class="modal-footer">
@@ -2825,6 +2826,65 @@
       </div>
     </div>
   </div>
+
+
+  <!-- Forgot Password Modal -->
+  <div class="modal fade" id="reset" tabindex="-1" role="dialog" data-backdrop="static"
+  data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header alert-danger">
+          <h5 class="modal-title">
+            <i class="fas fa-exclamation-circle"></i>
+            Password Reset</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form>
+            <div class="form-group">
+              <label for="reset_email">What is your email address?</label>
+              <input type="email" class="form-control" id="reset_email" placeholder="Enter email">
+              <small id="reset_email_text" class="form-text text-muted"></small>
+            </div>
+        <div id="reset_email_sent" class="collapse">
+          <p class="reset_email_sent">Alaska has sent an email to the above email address.
+          Please click the link in the email to continue. <strong>DO NOT</strong>
+          close this page. This page will automatically refresh when your email has been verified.
+          It may take a few minutes for the email to be delivered.
+        </p>
+          Waiting for email verification...
+          <div class="spinner-border spinner-border-sm" role="status">
+            <span class="sr-only">Waiting...</span>
+          </div>
+        </div>
+        <div id="reset_verified" class="collapse">
+          <hr></hr>
+          <h5>Now let's reset your password.</h5>
+          <div class="form-group">
+              <small id="reset_password_text" class="form-text text-muted">Must be 8-20 characters.</small>
+              <input type="password" class="form-control" id="reset_password" placeholder="New password">
+              <input type="password" class="form-control mt-1" id="reset_password_again" placeholder="Re-enter new password">
+          </div>
+        </div>
+      </form>
+      <div id="reset_success" class="collapse">
+        <hr></hr>
+        <p>Your password was reset successfully. Please close this popup and login with your new password.</p>
+      </div>
+        <div class="modal-footer">
+          <button id="reset_email_verify_btn" type="submit" class="btn btn-primary ld-ext-right">
+            Verify
+            <div class="ld ld-ring ld-spin"></div>
+          </button>
+          <button id="reset_password_btn" type="submit" class="btn btn-danger" style="display:none">Reset Password</button>
+          <button id="reset_close_btn" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
   <!-- Signup Modal -->

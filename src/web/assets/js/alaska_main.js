@@ -24,6 +24,16 @@ var commonForm;
 var sampleForms;
 var currentSampleForm;
 
+function toast(message) {
+  // Clone generic toast.
+  const toast = $('#toast').clone();
+  const toast_area = $('#toast_area');
+  toast.attr('id', null);
+  toast.find('.toast-body').text(message);
+  toast_area.prepend(toast);
+  toast.toast('show');
+}
+
 /**
  * Saves the current state of the project to the server.
  */
@@ -102,6 +112,7 @@ function logout(reload = true) {
  */
 function _showErrorModal(message) {
   console.log(message);
+  $('.modal').modal('hide');
 
   var modal = $('#error_modal');
   var output = modal.find('#error_output');
@@ -211,6 +222,26 @@ function checkEmailVerified(email, sent, password, btn, input, prepend) {
     }
   }, { email })
 }
+
+function checkResetVerified(email, sent, password, btn, input) {
+  console.log('checking');
+  _runCloudFunction('resetVerified', function (result) {
+    console.log(result);
+    if (result) {
+      sent.on('hidden.bs.collapse', function () {
+        password.collapse('show');
+        $(this).off('hidden.bs.collapse');
+      });
+
+      sent.collapse('hide');
+      btn.show();
+      input.addClass('is-valid');
+    } else {
+      setTimeout(checkResetVerified, 5000, email, sent, password, btn, input);
+    }
+  }, { email })
+}
+
 
 function setupSignupModal() {
   var modal = $('#signup');
@@ -335,12 +366,137 @@ function setupSignupModal() {
   });
 }
 
+function setupResetModal() {
+  var modal = $('#reset');
+  var emailVerifyBtn = modal.find('#reset_email_verify_btn');
+  var passwordBtn = modal.find('#reset_password_btn');
+  var closeBtn = modal.find('#reset_close_btn');
+
+
+  var emailSentCollapse = modal.find('#reset_email_sent');
+  var passwordCollapse = modal.find('#reset_verified');
+
+  var emailInput = modal.find('#reset_email');
+  var emailText = modal.find('#reset_email_text');
+  var passwordInput = modal.find('#reset_password');
+  var passwordInput2 = modal.find('#reset_password_again');
+  var passwordText = modal.find('#reset_password_text');
+
+  var resetSuccess = modal.find('#reset_success');
+
+  // When email verify button is clicked, check if the input is a valid
+  // email and then send an email.
+  emailVerifyBtn.click({
+    modal: modal,
+    input: emailInput,
+    text: emailText,
+    sent: emailSentCollapse,
+    password: passwordCollapse,
+    close: closeBtn,
+    passwordBtn: passwordBtn
+  }, function (e) {
+    var btn = $(this);
+    var input = e.data.input;
+    var text = e.data.text;
+    var modal = e.data.modal;
+    var sent = e.data.sent;
+    var close = e.data.close;
+    var password = e.data.password;
+    var passwordBtn = e.data.passwordBtn;
+    var val = input.val();
+
+    if (!isEmail(val)) {
+      input.addClass('is-invalid');
+      text.text('Please input a valid email.');
+    } else {
+      input.removeClass('is-invalid');
+      text.text('');
+
+      // Check if the email is already registered as a username.
+      var query = new Parse.Query(Parse.User);
+      query.equalTo('username', val);
+      query.find().then(function (results) {
+        console.log(results);
+        if (results.length > 0) {
+          input.prop('disabled', true);
+
+          btn.prop('disabled', true);
+          _runCloudFunction('sendResetEmail', function (results) {
+            btn.hide();
+            close.hide();
+            sent.collapse('show');
+
+            checkResetVerified(val, sent, password, passwordBtn, input);
+          }, {email: val});
+
+        } else {
+          input.addClass('is-invalid');
+          text.text('User does not exist.');
+        }
+      }, function (error) {
+        _showErrorModal(error);
+      });
+    }
+  });
+
+  passwordBtn.click({
+    modal: modal,
+    emailInput: emailInput,
+    passwordInput: passwordInput,
+    passwordInput2: passwordInput2,
+    passwordText: passwordText,
+    success: resetSuccess
+  }, function (e) {
+    var modal = e.data.modal;
+    var emailInput = e.data.emailInput;
+    var passwordInput = e.data.passwordInput;
+    var passwordInput2 = e.data.passwordInput2;
+    var passwordText = e.data.passwordText;
+    var success = e.data.success;
+
+    var email = emailInput.val();
+    var password = passwordInput.val();
+
+    // Make sure two passwords match.
+    if (password != passwordInput2.val()) {
+      passwordInput.addClass('is-invalid');
+      passwordInput2.addClass('is-invalid');
+      passwordText.text('Passwords do not match.');
+    } else if (password.length < 8 || password.length > 20) {
+      passwordInput.addClass('is-invalid');
+      passwordInput2.addClass('is-invalid');
+      passwordText.text('Must be 8-20 characters.');
+    } else {
+      passwordInput.removeClass('is-invalid');
+      passwordInput2.removeClass('is-invalid');
+      passwordInput.prop('disabled', true);
+      passwordInput2.prop('disabled', true);
+
+      $(this).prop('disabled', true);
+
+
+      // Reset user password.
+      resetPassword(email, password, function () {
+        success.collapse('show');
+      });
+    }
+  });
+}
+
 async function login(email, password, callback = function () {}, err = function () {}) {
   Parse.User.logIn(email, password).then(function (result) {
     callback();
   }, function (error) {
     err();
   });
+}
+
+async function resetPassword(email, password, callback = function () {}) {
+  console.log(`resetting password of user with email ${email}`);
+
+  _runCloudFunction('resetPassword', function () {
+    callback();
+  }, { email, password });
 }
 
 async function newUser(email, password, callback = function () {}) {
@@ -363,6 +519,12 @@ function setupLoginModal() {
   var emailInput = modal.find('#login_email');
   var passwordInput = modal.find('#login_password');
   var loginBtn = modal.find('#login_btn');
+
+  var resetBtn = modal.find('#forgot_password_btn');
+  resetBtn.click(function () {
+    modal.modal('hide');
+    $('#reset').modal('show');
+  });
 
   loginBtn.click({
     modal, emailInput, passwordInput
@@ -426,6 +588,7 @@ function initialize() {
 
   setupSignupModal();
   setupLoginModal();
+  setupResetModal()
 
   // initialize tooltips
   $('[data-toggle="tooltip"]').tooltip();
