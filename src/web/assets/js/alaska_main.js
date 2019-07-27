@@ -89,6 +89,14 @@ function _runCloudFunction(name, callback = function (response) {}, args = {}) {
   });
 }
 
+// Helper function to log user out and refresh page.
+function logout(reload = true) {
+  Parse.User.logOut();
+  if (reload) {
+    window.location.reload(false);
+  }
+}
+
 /**
  * Displays the error modal with a particular message.
  */
@@ -103,8 +111,7 @@ function _showErrorModal(message) {
 
     // Logout if the token has expired.
     if (message.code == 209) {
-      Parse.User.logOut();
-      window.location.reload(false);
+      logout(true);
     }
   } else {
     output.text(message);
@@ -182,7 +189,7 @@ function _setServerStatus() {
 
     _setServerStatusBadge(statusBadge, 'offline');
     _showErrorModal(error);
-    Parse.User.logOut();
+    logout(false);
   });
 }
 
@@ -389,6 +396,14 @@ function setupLoginModal() {
   });
 }
 
+function isLoggedIn() {
+  const user = Parse.User.current();
+  if (user == null || user == undefined) {
+    return false;
+  }
+  return true;
+}
+
 function checkLogin(callback = function () {}) {
   var user = Parse.User.current();
   if (user == null || user == undefined) {
@@ -430,6 +445,29 @@ function initialize() {
   // Make global copies.
   raw_reads_div = $('#raw_reads_div').clone(true);
   controls_modal = $('#choose_controls_modal').clone(true);
+
+  // Set login/logout button.
+  $('#login_logout_btn').click(function () {
+    const btn = $(this);
+    const text = btn.text().toLowerCase();
+
+    switch (text) {
+      case 'login':
+        $('#login').modal('show');
+        break;
+      case 'logout':
+        logout(true);
+        break;
+      default:
+        _showErrorModal(`undefined text ${text}`);
+    }
+  })
+
+  // Check if user is logged in.
+  if (isLoggedIn()) {
+    // Replace text on login/logout button to "logout".
+    $('#login_logout_btn').text('Logout');
+  }
 }
 
 /**
