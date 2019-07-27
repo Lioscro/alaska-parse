@@ -26,7 +26,8 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
 RUN pip3 install flask \
     && pip3 install requests \
     && pip3 install docker \
-    && pip3 install git+https://github.com/milesrichardson/ParsePy.git
+    && pip3 install git+https://github.com/milesrichardson/ParsePy.git \
+    && pip3 install 'sentry-sdk[flask]==0.10.2'
 
 WORKDIR /flask
 
