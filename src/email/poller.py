@@ -37,8 +37,9 @@ def poll(path='/alaska/data/email', interval=60):
                     m['From'] = fr
                     m['Subject'] = subject
 
-                    with smtplib.SMTP('localhost') as conn:
-                        conn.sendmail(fr, to, m.as_string())
+                    if '@' in to:
+                        with smtplib.SMTP('localhost') as conn:
+                            conn.sendmail(fr, to, m.as_string())
 
                 # Email send was successful.
                 new_path = os.path.join(path, 'sent', file)
