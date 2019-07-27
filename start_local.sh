@@ -5,7 +5,7 @@ source local.env
 args="$*"
 
 ./make_dirs.sh
-docker pull --all-tags lioscro/alaska
+# docker pull --all-tags lioscro/alaska
 docker-compose -f docker-compose.maintenance.yml down
 cp src/web/assets/js/local_env.js src/web/assets/js/env.js
 docker-compose -f docker-compose.yml up $args
