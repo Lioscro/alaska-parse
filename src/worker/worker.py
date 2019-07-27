@@ -7,6 +7,10 @@ import time
 import traceback
 import datetime as dt
 
+# Set up sentry.
+import sentry_sdk
+sentry_sdk.init(os.getenv('SENTRY_DSN', ''))
+
 def sigterm_handler(signal, frame):
     print('SIGTERM received', flush=True)
 

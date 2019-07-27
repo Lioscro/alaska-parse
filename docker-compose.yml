@@ -32,6 +32,7 @@ services:
     image: lioscro/alaska:webhook
     restart: always
     environment:
+      - SENTRY_DSN=${SENTRY_WEBHOOK_DSN}
       - PARSE_HOSTNAME=${PARSE_HOSTNAME}
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
@@ -52,6 +53,7 @@ services:
     image: lioscro/alaska:worker
     restart: always
     environment:
+      - SENTRY_DSN=${SENTRY_WORKER_DSN}
       - PARSE_HOSTNAME=http://parse-server:1337/parse
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}

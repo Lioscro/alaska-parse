@@ -24,7 +24,8 @@ RUN add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y python3.7 python3-pip
 
 RUN pip3 install docker \
-    && pip3 install git+https://github.com/milesrichardson/ParsePy.git
+    && pip3 install git+https://github.com/milesrichardson/ParsePy.git \
+    && pip3 install sentry-sdk==0.10.2
 
 WORKDIR /worker
 

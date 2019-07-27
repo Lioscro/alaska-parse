@@ -78,6 +78,14 @@ def sigterm_handler(signal, frame):
 # Handle SIGTERM gracefully.
 signal.signal(signal.SIGTERM, sigterm_handler)
 
+# Set up sentry.
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_DSN', ''),
+    integrations=[FlaskIntegration()]
+)
+
 # Actual flask application.
 app = Flask(__name__)
 
@@ -89,6 +97,11 @@ def index():
 @app.route('/status', methods=['POST'])
 def status():
     return jsonify({'success': 'online'})
+
+# For sentry testing.
+@app.route('/debug-sentry')
+def trigger_error():
+    division_by_zero = 1 / 0
 
 verified = []
 verification = {}
