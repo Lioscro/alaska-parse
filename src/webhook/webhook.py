@@ -117,7 +117,7 @@ def send_verification_email():
     data = request.get_json()
     to = data['email']
     fr = 'verify@alaska.caltech.edu'
-    datetime = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    datetime = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
 
     config = Config.get()
     host = config['host']
@@ -135,6 +135,106 @@ def send_verification_email():
     message = ('Please click on the following link to complete verification.<br>'
                '<a href="{}">{}</a><br>'
                'If you did not request verification, please do not click on the link.').format(url, url)
+
+    email = {'to': to,
+             'from': fr,
+             'subject': subject,
+             'message': message}
+
+    email_file = '{}.json'.format(datetime)
+    output_path = os.path.join(email_path, email_file)
+
+    with open(output_path, 'w') as f:
+        json.dump(email, f, indent=4)
+
+    return jsonify({'result': email_file})
+
+to_reset = set()
+resets = set()
+reset = {}
+@app.route('/reset/notify', methods=['POST'])
+def reset_notify():
+    data = request.get_json()
+    to = data['email']
+    fr = 'reset@alaska.caltech.edu'
+    datetime = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    config = Config.get()
+    host = config['host']
+    data_path = config['dataPath']
+    email_dir = config['emailDir']
+    email_path = os.path.join(data_path, email_dir)
+
+    subject = 'Password reset for Alaska'
+    message = 'Your password for Alaska has been reset.'
+
+    email = {'to': to,
+             'from': fr,
+             'subject': subject,
+             'message': message}
+
+    email_file = '{}.json'.format(datetime)
+    output_path = os.path.join(email_path, email_file)
+
+    with open(output_path, 'w') as f:
+        json.dump(email, f, indent=4)
+
+    return jsonify({'result': email_file})
+
+@app.route('/reset/check', methods=['POST'])
+def reset_check():
+    data = request.get_json()
+    email = data['email']
+
+    if email in to_reset:
+        to_reset.remove(email)
+        return jsonify({'result': True})
+    return jsonify({'result': False})
+
+@app.route('/reset/verified', methods=['POST'])
+def reset_verified():
+    data = request.get_json()
+    email = data['email']
+
+    if email in resets:
+        resets.remove(email)
+        to_reset.add(email)
+        return jsonify({'result': True})
+    return jsonify({'result': False})
+
+@app.route('/reset/verify/<key>', methods=['GET', 'POST'])
+def verify_reset(key):
+    if key in reset:
+        resets.add(reset[key])
+        del reset[key]
+    else:
+        return jsonify({'result': 'invalid reset key'})
+
+    return jsonify({'result': 'verified'})
+
+@app.route('/reset/verification', methods=['POST'])
+def send_reset_email():
+    data = request.get_json()
+    to = data['email']
+    fr = 'reset@alaska.caltech.edu'
+    datetime = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    config = Config.get()
+    host = config['host']
+    data_path = config['dataPath']
+    email_dir = config['emailDir']
+    email_path = os.path.join(data_path, email_dir)
+    key = ''
+    for i in range(24):
+        key += str(random.choice(string.digits))
+    reset[key] = to
+
+    url = 'http://{}/webhook/reset/verify/{}'.format(host, key)
+
+    subject = 'Password reset verification for Alaska'
+    message = ('Please click on the following link to complete password reset.<br>'
+               '<a href="{}">{}</a><br>'
+               'If you did not make this request, please do not click on the link.').format(url, url)
 
     email = {'to': to,
              'from': fr,
@@ -1001,7 +1101,7 @@ def _project_email(objectId, subject, message):
     email_dir = config['emailDir']
     email_path = os.path.join(data_path, email_dir)
 
-    datetime = (dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    datetime = (dt.datetime.now().strftime('%Y%m%d_%H%M%S')
                 + ' UTC')
     url = 'http://{}/?id={}'.format(host, objectId)
     fr = 'AlaskaProject_{}@{}'.format(objectId, host)
