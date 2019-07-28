@@ -10,7 +10,7 @@ import datetime as dt
 # Set up sentry.
 import sentry_sdk
 from sentry_sdk import capture_exception
-sentry_sdk.init(os.getenv('SENTRY_DSN', ''))
+sentry_sdk.init(os.getenv('SENTRY_WORKER_DSN', ''), environment=os.getenv('ENVIRONMENT', 'default'))
 
 def sigterm_handler(signal, frame):
     print('SIGTERM received', flush=True)
@@ -147,7 +147,12 @@ def start():
                 environment = {
                     'PARSE_HOSTNAME': PARSE_HOSTNAME,
                     'PARSE_APP_ID': PARSE_APP_ID,
-                    'PARSE_MASTER_KEY': PARSE_MASTER_KEY
+                    'PARSE_MASTER_KEY': PARSE_MASTER_KEY,
+                    'ENVIRONMENT': os.getenv('ENVIRONMENT', 'default'),
+                    'SENTRY_QC_DSN': os.getenv('SENTRY_QC_DSN', ''),
+                    'SENTRY_QUANT_DSN': os.getenv('SENTRY_QUANT_DSN', ''),
+                    'SENTRY_DIFF_DSN': os.getenv('SENTRY_DIFF_DSN', ''),
+                    'SENTRY_POST_DSN': os.getenv('SENTRY_POST_DSN', '')
                 }
                 wdir = script_path
                 name = '{}-{}'.format(analysis.code, project.objectId)
