@@ -12,6 +12,10 @@ __email__ = "kmin@caltech.edu"
 __status__ = "alpha"
 
 import os
+import sentry_sdk
+sentry_sdk.init(os.getenv('SENTRY_DSN', ''), environment=os.getenv('ENVIRONMENT', 'default'))
+from sentry_sdk import configure_scope
+
 import sys
 import time
 from utilities import run_sys
@@ -85,23 +89,26 @@ if __name__ == '__main__':
                         help='objectId of the reference for which to build '
                              + 'the index')
     args = parser.parse_args()
-
-    # Get number of threads.
-    config = Config.get()
-    nthreads = config['threads']
-
     objectId = args.objectId
 
-    # Get reference object.
-    Reference = Object.factory('Reference')
-    reference = Reference.Query.get(objectId=objectId)
+    with configure_scope() as scope:
+        scope.user = {'id': objectId}
 
-    # Build bowtie2 index.
-    build_bowtie2(reference, nthreads)
+        # Get number of threads.
+        config = Config.get()
+        nthreads = config['threads']
 
-    # Build kallisto index.
-    build_kallisto(reference, nthreads)
 
-    # Success. This reference is ready to be used.
-    reference.ready = True
-    reference.save()
+        # Get reference object.
+        Reference = Object.factory('Reference')
+        reference = Reference.Query.get(objectId=objectId)
+
+        # Build bowtie2 index.
+        build_bowtie2(reference, nthreads)
+
+        # Build kallisto index.
+        build_kallisto(reference, nthreads)
+
+        # Success. This reference is ready to be used.
+        reference.ready = True
+        reference.save()
