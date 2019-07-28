@@ -3,8 +3,6 @@ source ../shared.env
 
 # build qc image
 docker build -t "$DOCKER_REPO:qc" \
-             --build-arg TIMEZONE="$TIMEZONE" \
-             --build-arg MINICONDA3_URL="$MINICONDA3_URL" \
              --build-arg BOWTIE2_VER="$BOWTIE2_VER" \
              --build-arg SAMTOOLS_VER="$SAMTOOLS_VER" \
              --build-arg RSEQC_VER="$RSEQC_VER" \
