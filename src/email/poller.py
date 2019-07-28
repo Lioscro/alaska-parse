@@ -6,6 +6,8 @@ import signal
 import smtplib
 from email.mime.text import MIMEText
 
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'default')
+
 def sigterm_handler(signal, frame):
     print('SIGTERM received', flush=True)
 
@@ -37,7 +39,7 @@ def poll(path='/alaska/data/email', interval=60):
                     m['From'] = fr
                     m['Subject'] = subject
 
-                    if '@' in to:
+                    if '@' in to and ENVIRONMENT not in ['default', 'local']:
                         with smtplib.SMTP('localhost') as conn:
                             conn.sendmail(fr, to, m.as_string())
 
