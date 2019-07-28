@@ -1,4 +1,14 @@
 import os
+# Set up sentry.
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_WEBHOOK_DSN', ''),
+    integrations=[FlaskIntegration()],
+    environment=os.getenv('ENVIRONMENT', 'default')
+)
+from sentry_sdk import configure_scope
+
 import sys
 import re
 import time
@@ -77,14 +87,6 @@ def sigterm_handler(signal, frame):
 
 # Handle SIGTERM gracefully.
 signal.signal(signal.SIGTERM, sigterm_handler)
-
-# Set up sentry.
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-sentry_sdk.init(
-    dsn=os.getenv('SENTRY_DSN', ''),
-    integrations=[FlaskIntegration()]
-)
 
 # Actual flask application.
 app = Flask(__name__)
@@ -436,7 +438,9 @@ def _referenceBuild(reference):
     environment = {
         'PARSE_HOSTNAME': PARSE_HOSTNAME,
         'PARSE_APP_ID': PARSE_APP_ID,
-        'PARSE_MASTER_KEY': PARSE_MASTER_KEY
+        'PARSE_MASTER_KEY': PARSE_MASTER_KEY,
+        'SENTRY_DSN': os.getenv('SENTRY_INDEX_DSN', ''),
+        'ENVIRONMENT': os.getenv('ENVIRONMENT', 'default')
     }
     wdir = script_path
     name = 'index-{}'.format(reference.objectId)
@@ -878,7 +882,9 @@ def _project_compile(project):
             _project_email(objectId, 'Compilation started for project {}'.format(objectId),
                            'Alaska has started compiling project {} for GEO submission.'.format(objectId))
 
-            compile(project)
+            with configure_scope() as scope:
+                scope.set_tag('compile', objectId)
+                compile(project)
 
             project.progress = 'compiled'
             project.save()
@@ -905,7 +911,9 @@ def _project_upload(project, host, username, password, geo_username):
                             'public GEO FTP.').format(objectId))
 
             file = '{}_files.tar.gz'.format(geo_username)
-            upload(project, host, username, password, file)
+            with configure_scope() as scope:
+                scope.set_tag('upload', objectId)
+                upload(project, host, username, password, file)
 
             # Once done, update progress.
             project.progress = 'uploaded'

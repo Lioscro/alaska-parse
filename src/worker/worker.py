@@ -9,7 +9,8 @@ import datetime as dt
 
 # Set up sentry.
 import sentry_sdk
-sentry_sdk.init(os.getenv('SENTRY_DSN', ''))
+from sentry_sdk import capture_exception
+sentry_sdk.init(os.getenv('SENTRY_WORKER_DSN', ''), environment=os.getenv('ENVIRONMENT', 'default'))
 
 def sigterm_handler(signal, frame):
     print('SIGTERM received', flush=True)
@@ -22,6 +23,7 @@ def sigterm_handler(signal, frame):
                   flush=True)
             container.stop()
         except Exception as e:
+            capture_exception(e)
             print('error while stopping container', flush=True)
         finally:
             container.remove(force=True)
@@ -48,15 +50,18 @@ from parse_rest.core import ResourceRequestBadRequest, ParseError
 register(PARSE_APP_ID, '', master_key=PARSE_MASTER_KEY)
 
 def dequeue():
-    Job = Object.factory('Job')
-    jobs = Job.Query.filter(queuePosition__gte=0).order_by('queuePosition').limit(1)
+    try:
+        Job = Object.factory('Job')
+        jobs = Job.Query.filter(queuePosition__gte=0).order_by('queuePosition').limit(1)
 
-    if jobs:
-        job = jobs[0]
-        Function('jobStarted')(objectId=job.objectId)
-        return Job.Query.get(objectId=job.objectId)
-    else:
-        return False
+        if jobs:
+            job = jobs[0]
+            Function('jobStarted')(objectId=job.objectId)
+            return Job.Query.get(objectId=job.objectId)
+        else:
+            return False
+    except Exception as e:
+        capture_exception(e)
 
 def wait():
     # Get wait time.
@@ -76,6 +81,7 @@ def check_images():
         try:
             client.images.get(image)
         except Exception as e:
+            capture_exception(e)
             print('error while checking image {}'.format(image))
             sys.exit(1)
 
@@ -141,7 +147,12 @@ def start():
                 environment = {
                     'PARSE_HOSTNAME': PARSE_HOSTNAME,
                     'PARSE_APP_ID': PARSE_APP_ID,
-                    'PARSE_MASTER_KEY': PARSE_MASTER_KEY
+                    'PARSE_MASTER_KEY': PARSE_MASTER_KEY,
+                    'ENVIRONMENT': os.getenv('ENVIRONMENT', 'default'),
+                    'SENTRY_QC_DSN': os.getenv('SENTRY_QC_DSN', ''),
+                    'SENTRY_QUANT_DSN': os.getenv('SENTRY_QUANT_DSN', ''),
+                    'SENTRY_DIFF_DSN': os.getenv('SENTRY_DIFF_DSN', ''),
+                    'SENTRY_POST_DSN': os.getenv('SENTRY_POST_DSN', '')
                 }
                 wdir = script_path
                 name = '{}-{}'.format(analysis.code, project.objectId)
@@ -196,13 +207,15 @@ def start():
                 runtime = time.time() - start
 
                 if exitcode != 0:
-                    raise Exception('container exited with code {}'.format(exitcode))
+                    log = container.attach(stdout=True, stderr=True, stream=False, logs=True)
+                    msg = 'container {} exited with code {}\n{}'.format(name, exitcode, log)
+                    raise Exception(msg)
                 else:
                     print('{} success'.format(container.name))
                     Function('jobSuccess')(objectId=job.objectId, runtime=runtime)
                     continue
-
             except Exception as e:
+                capture_exception(e)
                 print(traceback.format_exc(), file=sys.stderr, flush=True)
 
                 # Notify that there was an error.

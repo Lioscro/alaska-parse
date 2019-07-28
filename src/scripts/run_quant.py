@@ -1,4 +1,8 @@
 import os
+import sentry_sdk
+sentry_sdk.init(os.getenv('SENTRY_QUANT_DSN', ''), environment=os.getenv('ENVIRONMENT', 'default'))
+from sentry_sdk import configure_scope
+
 import tarfile
 from utilities import run_sys, print_with_flush, mp_helper, \
                       archive, archive_project
@@ -77,23 +81,26 @@ if __name__ == '__main__':
     parser.add_argument('--archive', action='store_true')
     args = parser.parse_args()
 
-    # Get number of threads.
-    config = Config.get()
-    nthreads = config['threads']
-    nbootstraps = config['kallistoBootstraps']
-
     objectId = args.objectId
-    code = args.code
+    with configure_scope() as scope:
+        scope.user = {'id': objectId}
 
-    # Get project with specified objectId.
-    Project = Object.factory('Project')
-    project = Project.Query.get(objectId=objectId)
+        # Get number of threads.
+        config = Config.get()
+        nthreads = config['threads']
+        nbootstraps = config['kallistoBootstraps']
 
-    # Run kallisto
-    run_kallisto(project, nbootstraps, code=code, nthreads=nthreads)
+        code = args.code
 
-    # If archive = true:
-    if args.archive:
-        archive_path = archive_project(project, Config.get()['projectArchive'])
-        project.files['archive'] = archive_path
-        project.save()
+        # Get project with specified objectId.
+        Project = Object.factory('Project')
+        project = Project.Query.get(objectId=objectId)
+
+        # Run kallisto
+        run_kallisto(project, nbootstraps, code=code, nthreads=nthreads)
+
+        # If archive = true:
+        if args.archive:
+            archive_path = archive_project(project, Config.get()['projectArchive'])
+            project.files['archive'] = archive_path
+            project.save()

@@ -1,4 +1,8 @@
 import os
+import sentry_sdk
+sentry_sdk.init(os.getenv('SENTRY_POST_DSN', ''))
+from sentry_sdk import configure_scope
+
 import pandas as pd
 from utilities import run_sys, print_with_flush, archive, archive_project
 import tissue_enrichment_analysis as tea
@@ -85,18 +89,21 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     objectId = args.objectId
-    code = args.code
-    requires = args.requires
 
-    # Get project with specified objectId.
-    Project = Object.factory('Project')
-    project = Project.Query.get(objectId=objectId)
+    with configure_scope() as scope:
+        scope.user = {'id': objectId}
+        code = args.code
+        requires = args.requires
 
-    # Run sleuth
-    run_post(project, code=code, requires=requires)
+        # Get project with specified objectId.
+        Project = Object.factory('Project')
+        project = Project.Query.get(objectId=objectId)
 
-    # If archive = true:
-    if args.archive:
-        archive_path = archive_project(project, '{}_{}'.format(project.objectId, Config.get()['projectArchive']))
-        project.files['archive'] = archive_path
-        project.save()
+        # Run sleuth
+        run_post(project, code=code, requires=requires)
+
+        # If archive = true:
+        if args.archive:
+            archive_path = archive_project(project, '{}_{}'.format(project.objectId, Config.get()['projectArchive']))
+            project.files['archive'] = archive_path
+            project.save()

@@ -115,5 +115,5 @@ def run_sys(cmd, prefix='', file=None):
     time.sleep(1)
 
     if p.returncode != 0:
-        sys.exit('command terminated with non-zero return code!')
+        raise Exception('command terminated with non-zero return code!\n{}'.format(output))
     return output
