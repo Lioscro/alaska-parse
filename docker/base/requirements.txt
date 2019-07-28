@@ -1,0 +1,7 @@
+blinker
+docker
+flask
+git+https://github.com/milesrichardson/ParsePy.git
+pandas
+requests
+sentry-sdk==0.10.2

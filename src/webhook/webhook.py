@@ -132,7 +132,7 @@ def send_verification_email():
     data = request.get_json()
     to = data['email']
     fr = 'verify@alaska.caltech.edu'
-    datetime = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+    datetime = dt.datetime.now()
 
     config = Config.get()
     host = config['host']
@@ -147,9 +147,14 @@ def send_verification_email():
     url = 'http://{}/webhook/email/verify/{}'.format(host, key)
 
     subject = 'Email verification for Alaska'
-    message = ('Please click on the following link to complete verification.<br>'
-               '<a href="{}">{}</a><br>'
-               'If you did not request verification, please do not click on the link.').format(url, url)
+    message = (
+        '<html><head></head><body>'
+        'Please click on the following link to complete verification.<br>'
+        '<a href="{}">{}</a><br>'
+        'If you did not request verification, please do not click on the link.<br>'
+        'This message was sent to {} at {}.<br>'
+        '<b>Please do not reply to this email.</b></body>'
+    ).format(url, url, to, datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
     email = {'to': to,
              'from': fr,
@@ -232,7 +237,7 @@ def send_reset_email():
     data = request.get_json()
     to = data['email']
     fr = 'reset@alaska.caltech.edu'
-    datetime = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+    datetime = dt.datetime.now()
 
     config = Config.get()
     host = config['host']
@@ -247,9 +252,14 @@ def send_reset_email():
     url = 'http://{}/webhook/reset/verify/{}'.format(host, key)
 
     subject = 'Password reset verification for Alaska'
-    message = ('Please click on the following link to complete password reset.<br>'
-               '<a href="{}">{}</a><br>'
-               'If you did not make this request, please do not click on the link.').format(url, url)
+    message = (
+        '<html><head></head><body>'
+        'Please click on the following link to complete password reset.<br>'
+        '<a href="{}">{}</a><br>'
+        'If you did not make this request, please do not click on the link.<br>'
+        'This message was sent to {} at {}.<br>'
+        '<b>Please do not reply to this email.</b></body>'
+    ).format(url, url, to, datetime.strftime('%Y-%m-%d %H:%M:%S'))
 
     email = {'to': to,
              'from': fr,
@@ -1122,8 +1132,7 @@ def _project_email(objectId, subject, message):
     email_dir = config['emailDir']
     email_path = os.path.join(data_path, email_dir)
 
-    datetime = (dt.datetime.now().strftime('%Y%m%d_%H%M%S')
-                + ' UTC')
+    datetime = dt.datetime.now()
     url = 'http://{}/?id={}'.format(host, objectId)
     fr = 'AlaskaProject_{}@{}'.format(objectId, host)
     to = project.email
@@ -1134,7 +1143,7 @@ def _project_email(objectId, subject, message):
                    'host': host,
                    'password': project.ftpPassword,
                    'to': to,
-                   'datetime': datetime}
+                   'datetime': datetime.strftime('%Y-%m-%d %H:%M:%S') + ' PDT'}
 
     # Footer that is appended to every email.
     full_message = '\

@@ -4,8 +4,6 @@ source ../shared.env
 
 # build request image
 docker build -t "$DOCKER_REPO:post" \
-             --build-arg TIMEZONE="$TIMEZONE" \
-             --build-arg MINICONDA3_URL="$MINICONDA3_URL" \
              --force-rm \
              post/
 

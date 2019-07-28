@@ -4,7 +4,6 @@ source ../shared.env
 
 # build request image
 docker build -t "$DOCKER_REPO:worker" \
-             --build-arg TIMEZONE="$TIMEZONE" \
              --force-rm \
              worker/
 
