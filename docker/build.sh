@@ -1,3 +1,4 @@
+base/build_image.sh
 index/build_image.sh
 kallisto/build_image.sh
 post/build_image.sh
