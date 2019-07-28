@@ -9,6 +9,7 @@ import datetime as dt
 
 # Set up sentry.
 import sentry_sdk
+from sentry_sdk import capture_exception
 sentry_sdk.init(os.getenv('SENTRY_DSN', ''))
 
 def sigterm_handler(signal, frame):
@@ -22,6 +23,7 @@ def sigterm_handler(signal, frame):
                   flush=True)
             container.stop()
         except Exception as e:
+            capture_exception(e)
             print('error while stopping container', flush=True)
         finally:
             container.remove(force=True)
@@ -48,15 +50,18 @@ from parse_rest.core import ResourceRequestBadRequest, ParseError
 register(PARSE_APP_ID, '', master_key=PARSE_MASTER_KEY)
 
 def dequeue():
-    Job = Object.factory('Job')
-    jobs = Job.Query.filter(queuePosition__gte=0).order_by('queuePosition').limit(1)
+    try:
+        Job = Object.factory('Job')
+        jobs = Job.Query.filter(queuePosition__gte=0).order_by('queuePosition').limit(1)
 
-    if jobs:
-        job = jobs[0]
-        Function('jobStarted')(objectId=job.objectId)
-        return Job.Query.get(objectId=job.objectId)
-    else:
-        return False
+        if jobs:
+            job = jobs[0]
+            Function('jobStarted')(objectId=job.objectId)
+            return Job.Query.get(objectId=job.objectId)
+        else:
+            return False
+    except Exception as e:
+        capture_exception(e)
 
 def wait():
     # Get wait time.
@@ -76,6 +81,7 @@ def check_images():
         try:
             client.images.get(image)
         except Exception as e:
+            capture_exception(e)
             print('error while checking image {}'.format(image))
             sys.exit(1)
 
@@ -196,13 +202,15 @@ def start():
                 runtime = time.time() - start
 
                 if exitcode != 0:
-                    raise Exception('container exited with code {}'.format(exitcode))
+                    log = container.attach(stdout=True, stderr=True, stream=False, logs=True)
+                    msg = 'container {} exited with code {}\n{}'.format(name, exitcode, log)
+                    raise Exception(msg)
                 else:
                     print('{} success'.format(container.name))
                     Function('jobSuccess')(objectId=job.objectId, runtime=runtime)
                     continue
-
             except Exception as e:
+                capture_exception(e)
                 print(traceback.format_exc(), file=sys.stderr, flush=True)
 
                 # Notify that there was an error.
