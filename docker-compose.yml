@@ -32,10 +32,12 @@ services:
     image: lioscro/alaska:webhook
     restart: always
     environment:
-      - SENTRY_DSN=${SENTRY_WEBHOOK_DSN}
       - PARSE_HOSTNAME=${PARSE_HOSTNAME}
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - SENTRY_WEBHOOK_DSN=${SENTRY_WEBHOOK_DSN}
+      - SENTRY_INDEX_DSN=${SENTRY_INDEX_DSN}
       - VERSION=${VERSION}
     ports:
       - "5000:5000"
@@ -53,10 +55,15 @@ services:
     image: lioscro/alaska:worker
     restart: always
     environment:
-      - SENTRY_DSN=${SENTRY_WORKER_DSN}
       - PARSE_HOSTNAME=http://parse-server:1337/parse
       - PARSE_APP_ID=${PARSE_APP_ID}
       - PARSE_MASTER_KEY=${PARSE_MASTER_KEY}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - SENTRY_WORKER_DSN=${SENTRY_WORKER_DSN}
+      - SENTRY_QC_DSN=${SENTRY_QC_DSN}
+      - SENTRY_QUANT_DSN=${SENTRY_QUANT_DSN}
+      - SENTRY_DIFF_DSN=${SENTRY_DIFF_DSN}
+      - SENTRY_POST_DSN=${SENTRY_POST_DSN}
     volumes:
       - ./src/worker:/worker
       - data:/alaska/data
