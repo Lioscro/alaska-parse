@@ -409,16 +409,20 @@
                 <div class="modal-header alert-primary">
                   <h5 class="modal-title">
                     <i class="fas fa-archive"></i>
-                    Compile project for GEO submission.
+                    Compile project into GEO format.
                   </h5>
                 </div>
                 <div class="modal-body text-dark">
-                  <p>Alaska will begin compiling your project for submission to
-                    the GEO. All your reads and analysis results will be
-                    compressed into a single file that may be either downloaded
-                    to submit yourself, or submitted by Alaska. This may take a
-                    while depending on the number of samples you have. We'll
-                    send you an email when everything's ready.</p>
+                  <p>Alaska will compile your project into a format acceptable
+                    for submission to the GEO. All your reads and analysis
+                    results will be compressed into a single file. You may
+                    download this file and submit it to the GEO yourself.
+                    Alternatively, Alaska may perform the submission for you
+                    if you wish (Alaska submissions are private until you
+                    contact the GEO to make them public).
+
+                    This may take a while depending on the number of samples you
+                    have. We'll send you an email when everything's ready.</p>
                 </div>
                 <div class="modal-footer">
                   <button type="button"
@@ -586,8 +590,9 @@
               step in the analysis. Please check the live output for more
               information. Most issues can be resolved by retrying the
               analysis, by clicking the redo icon next to the project status.
-              If this happens again, please contact WormBase for assistance,
-              with your project ID.</p>
+              If this happens again, please
+              <a href="https://www.wormbase.org/tools/support">contact WormBase</a>
+              for assistance, with your project ID.</p>
           </div>
           <div class="modal-footer">
             <button type="button"
@@ -605,15 +610,19 @@
       <div class="row d-flex justify-content-center align-items-center">
         <div class="col">
           <h1 class="text-center text-white"
-              style="font-size:3em;">We just need some more information!</h1>
+              style="font-size:3em;">We need some more information!</h1>
         </div>
       </div>
       <div class="row">
         <div class="col">
           <h2 class="text-center text-white"
-              style="font-weight:100;font-size:1.8em;">Part of the Alaska
-            services are meant to help you fill out the metadata fields
-            required for submission at the Gene Expression Omnibus.</h2>
+              style="font-weight:100;font-size:1.8em;">Alaska
+            is meant to help you fill out the metadata fields
+            required for submission at the Gene Expression Omnibus (GEO),
+            something that is often required before publication.
+            Don't worry, the GEO staff can help if your metadata has changed
+            before publication (authorships, additional data, etc...).
+          </h2>
         </div>
       </div>
       <div class="row">
@@ -691,8 +700,8 @@
                        class="col-form-label">Email<span class="text-danger">*</span></label>
                 <small id="proj_corresponding_email_help"
                        class="form-text text-muted">Please input the email of
-                  the corresponding contributor. This email will also be used
-                  to contact you when the analysis is finished.</small>
+                  the corresponding contributor (to be listed in the GEO
+                  repository).</small>
               </div>
               <div class="col-sm-3">
                 <input type="email"
@@ -705,7 +714,7 @@
               <div class="col-sm-4">
                 <legend class="col-form-label">Contributors</legend>
                 <small class="form-text text-muted">The full name
-                  "First,Initial,Last" of all of the individuals or consortiums
+                  "First, Initial, Last" of all of the individuals or consortiums
                   associated with this project EXCLUDING THE CORRESPONDING
                   AUTHOR.</small>
               </div>
@@ -793,10 +802,13 @@
                     <div class="form-group row factor_name_group">
                       <div class="col-sm-4">
                         <legend class="col-form-label">Name<span class="text-danger">*</span></legend>
-                        <small class="form-text text-muted">e.g. 'Strain' if
-                          you wanted to compare between two nematode strains;
-                          'Life-Stage' if you wanted to find the differentially
-                          expressed genes between L1 and L2 larvae.</small>
+                        <small class="form-text text-muted">e.g.
+                          'Strain' if you wanted to compare between two nematode
+                          strains (N2 wild type vs CB1
+                          <a href="https://www.wormbase.org/species/c_elegans/strain/CB1#03--10">CB1</a>
+                          ); 'Life-Stage' if you wanted
+                          to find the differentially expressed genes between two
+                          life stages</small>
                       </div>
                       <div class="col d-flex factor_name_inputs">
                         <select class="custom-select mr-2">
@@ -1134,7 +1146,7 @@
                 </div>
                 <div class="col-sm-3 pl-0">
                   <label for="sample_share_organism_strain"
-                         class="col-form-label">Organism strain</label>
+                         class="col-form-label">Organism background strain</label>
                   <small id="sample_share_organism_strain_help"
                          class="form-text text-muted">Please input the
                     background strain used in this analysis</small>
@@ -1224,9 +1236,8 @@
                   <legend class="col-form-label">Miscellaneous</legend>
                   <small id="sample_share_characteristics_help"
                          class="form-text text-muted">Additional shared
-                    characteristics. Input additional
-                    sample characteristics that are shared by all samples and
-                    have not been mentioned above.</small>
+                    characteristics. Any additional characteristics with which
+                    you wish to annotate samples.</small>
                 </div>
                 <div id="sample_share_characteristics"
                      class="col sample_characteristics_inputs">
@@ -1242,7 +1253,8 @@
                     <button class="btn btn-primary add_btn"
                             type="button">Add</button>
                   </div>
-                  <!--Hidden element for additional contributors. NOTE: MUST CHANGE DISPLAY TO FLEX WHEN SHOWING-->
+                  <!--Hidden element for additional contributors.
+                  NOTE: MUST CHANGE DISPLAY TO FLEX WHEN SHOWING-->
                   <div class="mt-1 sample_characteristics_row"
                        style="display:none">
                     <input type="text"
@@ -2127,7 +2139,7 @@
               <div class="modal-title">
                 <h5>There are some fields that did not pass validation.</h5>
               </div>
-              <p>Problematic input fields have been highlighted with red.
+              <p>Problematic input fields are highlighted with red.
                 Details of these fields are listed below. Please fix those
                 inputs and press the verify metadata button again.</p>
               <div class="card check_meta_details mb-2"
@@ -2307,27 +2319,30 @@
           <div class="card-deck">
             <div class="card text-white border-success"
                  style="background-color:transparent;">
-              <h5 class="card-header">1. Your project ID</h5>
+              <h5 class="card-header">1. Project ID</h5>
               <div class="card-body">
                 <p class="card-text mb-0">Your project ID is:</p>
                 <h5 id="proj_id"
                     class="card-title">Project ID</h5>
-                <p class="card-text">This will be used to identify and keep
-                  track of everything related to your project. If you need to
-                  contact the WormBase team regarding your project, you will
-                  need to include your ID.</p>
-                <p class="card-text">Here is the unique URL for your project:<br><mark><code
+                <p class="card-text">Store this ID! If you need to
+                  contact the WormBase team regarding your project, include your
+                  ID.</p>
+                <p class="card-text">If you pause your analysis, use this URL
+                  for your project:<br><mark><code
                           id="proj_url"></code></mark></p>
               </div>
             </div>
             <div class="card text-white border-warning"
                  style="background-color:transparent;">
-              <h5 class="card-header">2. Preparing your reads for upload</h5>
+              <h5 class="card-header">2. Prepare your files</h5>
               <div class="card-body">
                 <p class="card-text">Alaska accepts <mark><code>.fastq</code></mark>
-                  or <mark><code>.fastq.gz</code></mark> files in non-compressed folders.
-                  Each sample must have their own folder with its reads.</p>
-                <p class="card-text"><strong>Please make sure your submission has
+                  or <mark><code>.fastq.gz</code></mark> files in folders.
+                  Files associated with one sample must be placed within
+                  a folder and the folder must be named like the sample
+                  (i.e.: wt1 is the name of the folder for the first wild type
+                  replicate).</p>
+                <p class="card-text"><strong>Make sure your submission has
                   the correct directory structure!</strong></p>
                 <p class="card-text text-center">
                   <!--See example button trigger for modal-->
@@ -2351,19 +2366,19 @@
                       </div>
                       <div class="modal-body text-dark">
                         <div class="alert alert-warning">
-                          Please note that you must have at least two
-                          replicates for each perturbation (including your
+                          Note: To use Alaska, you need at least two
+                          replicates per perturbation (including your
                           control). This means you must submit at least 4
                           samples. The example below uses 2 samples for
                           simplicity.
                         </div>
-                        <p>For all the examples, we are working with a project
-                          with 2 samples, with 4 read files each (for a total
-                          of 8 read files).</p>
+                        <p>For all the examples, each perturbation has two
+                          replicates. Sequences for a single sample are split
+                          into 4 FASTQ files each.</p>
                         <h5>Instructions</h5>
-                        <p>You will prepare 2 folders, one for each sample,
-                          containing all the reads for their corresponding
-                          sample. No other form of submission is accepted.
+                        <p>For each sample, prepare a folder and place all the
+                          FASTQ files for that sample in the folder. No other
+                          form of submission is accepted.
                           Here is what it would look like.</p>
                         <div class="d-flex justify-content-center">
                           <ul class="fa-ul text-monospace"
@@ -2397,11 +2412,11 @@
             </div>
             <div class="card text-white border-danger"
                  style="background-color:transparent;">
-              <h5 class="card-header">3. Uploading your reads</h5>
+              <h5 class="card-header">3. Upload your samples</h5>
               <div class="card-body">
-                <p class="card-text">Reads can only be uploaded using an FTP
-                  service. Large files may be transferred through a server. If
-                  you are not familiar with FTP transfers, we recommend that
+                <p class="card-text">Samples are uploaded through an FTP
+                  service. Large files may be transferred through a server. We
+                  recommend that
                   you use an FTP client, such as <a class="text-warning"
                      href="https://cyberduck.io/"
                      target="_blank">Cyberduck</a>.</p>
@@ -2416,8 +2431,8 @@
                 <dt class="col-sm-4">Password</dt>
                 <dd id="ftp_pw" class="col-sm-6">password</dd>
             </dl>-->
-                <p class="card-text">When you reach this step, click the button
-                  below for details on how to upload.</p>
+                <p class="card-text">Click the button below for upload
+                  details.</p>
                 <p class="card-text text-center">
                   <!--FTP button trigger for modal-->
                   <span class="d-inline-block"
@@ -2448,8 +2463,7 @@
                       </div>
                       <div class="modal-body text-dark">
                         <p>This is the information you need to provide to your
-                          FTP service or client in order to transfer the files
-                          from your computer to WormBase.</p>
+                          FTP service or client to transfer your files.</p>
                         <hr>
                         <!--Description list for FTP info-->
                         <dl class="row">
@@ -2480,9 +2494,8 @@
                  style="background-color:transparent;">
               <h5 class="card-header">4. Run Alaska</h5>
               <div class="card-body">
-                <p class="card-text">Once we receive your reads, we can start
-                  the data analysis. Please click the button below <strong>ONLY</strong>
-                  once all your reads are uploaded.</p>
+                <p class="card-text">Please click the button below <strong>ONLY</strong>
+                  once all your files are uploaded.</p>
                 <!--Copy test reads button for testing purposes-->
                 <p class="card-text text-center testing"
                    style="display:none"><button id="copy_test_reads_btn"
@@ -2554,11 +2567,9 @@
           <h2 class="text-center text-light"
               id="fetch_reads_results_header_2"
               style="font-weight:100;font-size:1.5em;">This is the directory
-            structure that we received. Please check it to make sure that the
-            directory structure is correct and that all the files are listed
-            within the folders you intended. Any files that are missing from
-            this list will
-            not be used in downstream analyses.</h2>
+            structure that we received. Please check it to make sure all the
+            files are listed within the folders you intended. Any files that are
+            missing from this list were not received.</h2>
         </div>
       </div>
       <div class="row">
@@ -2654,10 +2665,10 @@
                      id="sample_names_header">Alaska found num samples.</p>
                 </div>
                 <div class="modal-body text-dark">
-                  <p>We extracted the sample names from the folders/files you
+                  <p>We extracted the sample names from the folders you
                     provided. If you wish to name the samples differently,
                     please rename them now. Sample names can be anything, but
-                    the following special characters should not be used: &#92;
+                    the following special characters are forbidden: &#92;
                     &#47; &#36; &#37; &#96; &#126;</p>
                   <p>Sample names must be unique.</p>
                   <form id="sample_names_form">
@@ -2708,10 +2719,10 @@
         <div class="col">
           <h2 class="text-center text-light"
               id="fetch_reads_results_header_2"
-              style="font-weight:100;font-size:1.8em;">Please check if the FTP
-            transfer was successful, or that all your uploads are in one of the
+              style="font-weight:100;font-size:1.8em;">Please check the FTP
+            transfer was successful, or that all your uploads are in a
             <a class="text-warning"
-               href="faq.html#faq_extensions">supported formats</a>.</h2>
+               href="faq.html#faq_extensions">supported format</a>.</h2>
         </div>
       </div>
       <div class="row">
@@ -2773,8 +2784,9 @@
         <div class="modal-body text-dark">
           <p id="error_message">An unknown error occured while processing your
             request. Most errors are resolved by reloading the page. If you
-            encounter this issue again, please contact WormBase with your
-            project ID and the server output below.</p>
+            encounter this issue again, please
+            <a href="https://www.wormbase.org/tools/support">contact WormBase
+              Help</a> with your project ID and the server output below.</p>
           <textarea id="error_output"
                     class="form-control text-monospace text-sm"
                     style="font-size:0.8em"
