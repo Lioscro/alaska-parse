@@ -3885,8 +3885,10 @@ function set_factor_card_to_sample_listener(factor_card,
       var specific_form_class_name = 'sample_specific_form';
 
       if (val == factor_name || other_val == factor_name) {
+        form_group.hide();
         checkbox.prop('disabled', true);
       } else {
+        form_group.show();
         checkbox.prop('disabled', false);
       }
       refresh_checkbox(checkbox);
