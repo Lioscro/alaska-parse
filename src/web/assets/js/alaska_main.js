@@ -1534,6 +1534,9 @@ function _setupMetaInput(callback = function () {}) {
  * Show metadata input form.
  */
 function showMetaInput(callback = function () {}) {
+  // Show GEO reminder modal.
+  $('#geo_reminder_modal').modal('show');
+
   // First, fetch organisms dict.
   _runCloudFunction('getOrganismsDict', function (response) {
     organisms = response;
