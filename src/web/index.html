@@ -2803,11 +2803,11 @@
               <input type="password" class="form-control" id="login_password" placeholder="Password">
               <button id="forgot_password_btn" type="button" class="btn btn-link"><small>I forgot my password!</small></button>
             </div>
+            <div class="modal-footer">
+              <button id="login_btn" type="submit" class="btn btn-primary">Login</button>
+              <button id="login_close_btn" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
           </form>
-          <div class="modal-footer">
-            <button id="login_btn" type="submit" class="btn btn-primary">Login</button>
-            <button id="login_close_btn" type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          </div>
         </div>
       </div>
     </div>
@@ -2934,6 +2934,28 @@
     </div>
   </div>
 </div>
-</body>
+
+<!--Reminder modal for GEO submission-->
+<div class="modal fade" id="geo_reminder_modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header alert-danger">
+        <h5 class="modal-title"><i class="fas fa-bell mr-1"></i>GEO Submission Reminder</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        This is a friendly reminder that Alaska will <strong>NOT</strong> deposit
+        reads automatically to the GEO without your permission. The option to
+        submit your reads and analyses to the GEO will be available at the end
+        of the pipeline.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div></body>
 
 </html>
