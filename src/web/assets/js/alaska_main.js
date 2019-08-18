@@ -5025,7 +5025,6 @@ var common_meta_classes_to_functions = {
   sample_growth_conditions_group: 'group_textarea',
   sample_rna_extraction_group: 'group_textarea',
   sample_library_preparation_group: 'group_textarea',
-  sample_miscellaneous_group: 'group_textarea',
   sample_organism_group: 'organism',
   sample_organism_strain_group: 'group_textbox',
   'sample_life-stage_group': 'group_custom_dropdown',
@@ -5556,7 +5555,6 @@ var class_names_to_labels = {
   sample_growth_conditions_group: 'Growth conditions',
   sample_rna_extraction_group: 'RNA extraction',
   sample_library_preparation_group: 'Library preparation',
-  sample_miscellaneous_group: 'miscellaneous',
   sample_organism_group: 'Organism',
   sample_organism_strain_group: 'Organism strain',
   'sample_life-stage_group': 'Life-stage',
@@ -5837,10 +5835,6 @@ function convert_sample_meta_inputs(card) {
 
       case 'sample_life-stage_group':
         obj.metadata['life-stage'] = input;
-        break;
-
-      case 'sample_miscellaneous_group':
-        obj.metadata['miscellaneous'] = input;
         break;
 
       case 'sample_name_group':
@@ -7236,7 +7230,6 @@ var common_meta_order = [
   'sample_growth_conditions_group',
   'sample_rna_extraction_group',
   'sample_library_preparation_group',
-  'sample_miscellaneous_group',
   'sample_organism_group',
   'sample_organism_strain_group',
   'sample_life-stage_group',
@@ -7284,7 +7277,6 @@ var test_common_inputs = {
     "sample_growth_conditions_group": "shared growth conditions",
     "sample_rna_extraction_group": "shared rna extraction",
     "sample_library_preparation_group": "shared library prep",
-    "sample_miscellaneous_group": "shared misc",
     "sample_organism_group": {
       'genus': 'caenorhabditis',
       'species': 'elegans',
@@ -7337,7 +7329,6 @@ var test_samples_inputs = {
       "sample_growth_conditions_group": "shared growth conditions",
       "sample_rna_extraction_group": "shared rna extraction",
       "sample_library_preparation_group": "shared library prep",
-      "sample_miscellaneous_group": "shared misc",
       "sample_organism_group": {
         'genus': 'caenorhabditis',
         'species': 'elegans',
@@ -7384,7 +7375,6 @@ var test_samples_inputs = {
       "sample_growth_conditions_group": "shared growth conditions",
       "sample_rna_extraction_group": "shared rna extraction",
       "sample_library_preparation_group": "shared library prep",
-      "sample_miscellaneous_group": "shared misc",
       "sample_organism_group": {
         'genus': 'caenorhabditis',
         'species': 'elegans',
@@ -7435,7 +7425,6 @@ var test_samples_inputs = {
       "sample_growth_conditions_group": "shared growth conditions",
       "sample_rna_extraction_group": "shared rna extraction",
       "sample_library_preparation_group": "shared library prep",
-      "sample_miscellaneous_group": "shared misc",
       "sample_organism_group": {
         'genus': 'caenorhabditis',
         'species': 'elegans',
@@ -7486,7 +7475,6 @@ var test_samples_inputs = {
       "sample_growth_conditions_group": "shared growth conditions",
       "sample_rna_extraction_group": "shared rna extraction",
       "sample_library_preparation_group": "shared library prep",
-      "sample_miscellaneous_group": "shared misc",
       "sample_organism_group": {
         'genus': 'caenorhabditis',
         'species': 'elegans',
