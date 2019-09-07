@@ -726,6 +726,10 @@ function parseUrlParams() {
       // Go to whatever step we need to go to.
       _loadAll(objectId, _resumeProject);
     });
+  } else {
+    if (isLoggedIn()) {
+      $('#account_modal').modal('show');
+    }
   }
 }
 
