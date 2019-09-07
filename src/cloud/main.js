@@ -325,6 +325,31 @@ Parse.Cloud.define('sampleCitation', async (request) => {
   return data.result;
 });
 
+/* Reset Project */
+Parse.Cloud.define('resetProject', async (request) => {
+  const user = request.user;
+  if (user == undefined || user == null) {
+    throw 'Must be logged in';
+  }
+  const sessionToken = user.getSessionToken();
+  const objectId = request.params.objectId;
+
+  // Get the project.
+  const query = new Parse.Query('Project');
+  const project = await query.get(objectId, { sessionToken });
+
+  // Find all jobs and destroy.
+  const jobs = await project.relation('jobs').query().find();
+  for (let i = 0; i < jobs.length; i++) {
+    await jobs[i].destroy({ sessionToken });
+  }
+
+  // Set status to saved.
+  await project.save({'progress': 'saved'}, { sessionToken });
+
+  return true;
+});
+
 /* Start project.. */
 Parse.Cloud.define('startProject', async (request) => {
   const user = request.user;
