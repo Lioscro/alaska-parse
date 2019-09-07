@@ -8,7 +8,7 @@ services:
     environment:
       - ENVIRONMENT=${ENVIRONMENT}
     working_dir: /email
-    command: python3 poller.py /alaska/data/email -i 60
+    command: python3 poller.py /alaska/data/email -i 30
     volumes:
       - ./src/email:/email
       - data:/alaska/data
