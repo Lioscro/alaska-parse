@@ -610,12 +610,6 @@ function initialize() {
   setupLoginModal();
   setupResetModal()
 
-  // initialize tooltips
-  $('[data-toggle="tooltip"]').tooltip();
-
-  // initialize popovers
-  $('[data-toggle="popover"]').popover();
-
   // Add on click handler for start project button.
   $('#new_proj_btn').click(function () {
     if (Parse.User.current() == null || Parse.User.current() == undefined) {
@@ -655,6 +649,11 @@ function initialize() {
     // Setup my account modal.
     setupAccountModal();
   }
+  // initialize tooltips
+  $('[data-toggle="tooltip"]').tooltip();
+
+  // initialize popovers
+  $('[data-toggle="popover"]').popover();
 }
 
 async function setupAccountModal() {
@@ -757,8 +756,8 @@ function _resumeProject() {
 /**
  * Start analysis of the project.
  */
-function startProject(callback = function () {}) {
-  _runCloudFunction('startProject', callback, {objectId: project.id});
+function startProject(callback = function () {}, reset = false) {
+  _runCloudFunction('startProject', callback, {objectId: project.id, reset: reset});
 }
 
 function loadMetaInput() {
@@ -1723,6 +1722,22 @@ function openSleuthServer(callback = function () {}) {
   }, {objectId: project.id})
 }
 
+function disableMetadataEditBtn() {
+  const span = $('#return_to_metadata_btn_span');
+  const btn = $('#return_to_metadata_btn');
+  btn.prop('disabled', true);
+  btn.css('pointer-events', 'none');
+  span.popover('enable');
+}
+
+function enableMetadataEditBtn() {
+  const span = $('#return_to_metadata_btn_span');
+  const btn = $('#return_to_metadata_btn');
+  btn.prop('disabled', false);
+  btn.css('pointer-events', 'auto');
+  span.popover('disable');
+}
+
 async function _setProjectProgress() {
   var badge = $('#project_status_badge');
   badge.removeClass('badge-secondary badge-info badge-success badge-danger');
@@ -1733,6 +1748,7 @@ async function _setProjectProgress() {
 
   var progress = project.get('progress');
   badge.text(progress);
+  disableMetadataEditBtn();
 
   switch (progress) {
     case 'queued':
@@ -1747,6 +1763,7 @@ async function _setProjectProgress() {
       // Enable GEO compile button.
       compileBtn.prop('disabled', false);
       $('#all_download_btn').prop('disabled', false);
+      enableMetadataEditBtn();
       break;
     case 'compiling':
       badge.text('success');
@@ -1760,6 +1777,7 @@ async function _setProjectProgress() {
       $('#all_download_btn').prop('disabled', false);
       uploadBtn.prop('disabled', false);
       _showSuccessCheck(compileBtn);
+      enableMetadataEditBtn();
       break;
     case 'uploading':
       badge.text('success');
@@ -1774,11 +1792,13 @@ async function _setProjectProgress() {
       $('#all_download_btn').prop('disabled', false);
       _showSuccessCheck(compileBtn);
       _showSuccessCheck(uploadBtn);
+      enableMetadataEditBtn();
       break;
     case 'error':
       badge.addClass('badge-danger');
       clearInterval(progressInterval);
       $('#retry_btn').show();
+      enableMetadataEditBtn();
       break;
     default:
       _showErrorModal(`Unknown project progress ${progress}`);
@@ -2055,8 +2075,24 @@ function showProgress() {
     }
   });
 
+  // Set return modal continue button.
+  setupReturnBtn();
+
+  enable_popovers_tooltips(progress_container);
+
   // Then, call update_progress regularly.
   _pollProject();
+}
+
+function setupReturnBtn() {
+  const return_btn = $('#metadata_alert_btn');
+  return_btn.click(function () {
+    _runCloudFunction('resetProject', function (response) {
+      if (response) {
+        window.location.reload(true);
+      }
+    }, { objectId: project.id });
+  });
 }
 
 

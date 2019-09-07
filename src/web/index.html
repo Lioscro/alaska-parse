@@ -97,10 +97,23 @@
       </div>
     </div>
   </nav>
-  <div class="container mt-5 pt-4"
+  <div class="container mt-5 pt-5"
        id="progress_container"
        style="display:none">
     <div>
+      <span id="return_to_metadata_btn_span"
+            class="d-inline-block"
+            data-toggle="popover"
+            data-content="You may not edit metadata while Alaska is running."
+            data-trigger="hover"
+            style="margin:20px;"
+            title="Analysis in progress."
+            data-placement="bottom">
+        <button class="btn btn-info" type="button" id="return_to_metadata_btn" style="pointer-events:none" data-toggle="modal" data-target="#metadata_alert_modal" disabled>
+          <i class="fas fa-arrow-left mr-1"></i>
+          Edit metadata
+        </button>
+      </span>
       <div class="row">
         <div class="col">
           <h1 class="text-center text-white"
@@ -3021,6 +3034,30 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-danger" data-dismiss="modal" data-toggle="modal" data-target="#reset">Reset password</button>
         <button type="button" class="btn btn-warning" id="logout_btn">Logout</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--Edit metadata alert-->
+<div class="modal fade" id="metadata_alert_modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header alert-danger">
+        <h5 class="modal-title"><i class="fas fa-exclamation-triangle mr-1"></i>Going back to metadata forms!</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        You are about to go back to the metadata forms for this project.
+        Any analyses that Alaska has performed for this project will be discarded
+        and replaced with new ones according to changes in metadata. Your raw reads
+        will remain intact. Please proceed with caution.
+      </div>
+      <div class="modal-footer">
+        <button id="metadata_alert_btn" type="button" class="btn btn-danger">Continue</button>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
       </div>
     </div>
