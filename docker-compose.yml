@@ -5,6 +5,8 @@ services:
   email:
     image: python:3
     restart: always
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT}
     working_dir: /email
     command: python3 poller.py /alaska/data/email -i 60
     volumes:
