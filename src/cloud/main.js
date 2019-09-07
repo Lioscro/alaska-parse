@@ -101,8 +101,7 @@ Parse.Cloud.define('newProject', async (request) => {
   project.setACL(new Parse.ACL(user));
   await project.save({
     'files': {},
-    'progress':
-    'init',
+    'progress': 'init',
     'metadata': {},
     'formInput': {},
     email
