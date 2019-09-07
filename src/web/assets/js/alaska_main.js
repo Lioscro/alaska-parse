@@ -25,6 +25,19 @@ var projectForm;
 var commonForm;
 var sampleForms;
 var currentSampleForm;
+var statusToText = {
+  init: 'Initialized',
+  meta: 'Waiting for metadata',
+  saved: 'Metadata saved',
+  queued: 'Analysis queued',
+  running: 'Analysis running',
+  success: 'Analysis success',
+  error: 'Analysis error',
+  compiling: 'Compiling for submission',
+  compiled: 'Compiled for submission',
+  uploading: 'Submitting to GEO',
+  uploaded: 'Submitted to GEO',
+}
 
 function toast(message) {
   // Clone generic toast.
@@ -637,7 +650,45 @@ function initialize() {
   if (isLoggedIn()) {
     // Replace text on login/logout button to "logout".
     $('#login_logout_btn').text('Logout');
+    // Show My account navigatio nitem.
+    $('#account_btn').show();
+    // Setup my account modal.
+    setupAccountModal();
   }
+}
+
+async function setupAccountModal() {
+  const user = Parse.User.current();
+  const modal = $('#account_modal');
+  const email_label = modal.find('#account_email');
+  email_label.text(user.get('username'));
+
+  const project_body = modal.find('#account_project_table_body');
+  const project_row = modal.find('.project_info_row');
+
+  const projects = await Parse.User.current().relation('projects').query().find();
+  const project_dicts = _.map(projects, project => ({
+    id: project.id,
+    nickname: project.get('metadata').nickname,
+    created: project.createdAt.toLocaleString(),
+    status: statusToText[project.get('progress')],
+    link: `?id=${project.id}`,
+  }));
+  project_dicts.forEach(function(dict) {
+    const new_row = project_row.clone();
+    new_row.find('.project_info_id').text(dict.id);
+    new_row.find('.project_info_nickname').text(dict.nickname || 'undefined');
+    new_row.find('.project_info_created').text(dict.created);
+    new_row.find('.project_info_status').text(dict.status);
+    new_row.find('.project_info_link').attr('href', dict.link);
+    project_body.append(new_row);
+
+    new_row.show();
+  })
+
+  modal.find('#logout_btn').click(function() {
+    logout(true);
+  })
 }
 
 /**
@@ -675,6 +726,10 @@ function parseUrlParams() {
       // Go to whatever step we need to go to.
       _loadAll(objectId, _resumeProject);
     });
+  } else {
+    if (isLoggedIn()) {
+      $('#account_modal').modal('show');
+    }
   }
 }
 
@@ -5015,6 +5070,7 @@ var getters_and_setters = {
   }
 };
 var proj_meta_classes_to_functions = {
+  proj_nickname_group: 'group_textbox',
   proj_title_group: 'group_textbox',
   proj_abstract_group: 'group_textarea',
   proj_corresponding_group: 'group_textbox',
@@ -5768,6 +5824,10 @@ function convert_proj_meta_inputs(card) {
           factors[name] = values;
         }
         obj['factors'] = factors;
+        break;
+
+      case 'proj_nickname_group':
+        obj.metadata['nickname'] = input;
         break;
 
       case 'proj_title_group':

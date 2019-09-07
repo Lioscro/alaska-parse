@@ -51,6 +51,7 @@
   <script src="assets/js/anime.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.8.0/js/bootstrap-datepicker.min.js"></script>
   <script src="https://npmcdn.com/parse/dist/parse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
   <!-- <script src="https://unpkg.com/popper.js@1.14.5/dist/umd/popper.js"></script> -->
   <!-- <script src="https://unpkg.com/tooltip.js/dist/umd/tooltip.min.js"></script> -->
 </head>
@@ -82,6 +83,11 @@
                href="contact.html">Contact us</a></li>
           <li class="nav-item" role="presentation">
             <button id="login_logout_btn" class="nav-link text-light btn btn-link">Login</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button id="account_btn" class="nav-link text-light btn btn-link" style="display:none" data-toggle="modal" data-target="#account_modal">
+              My Account
+            </button>
           </li>
         </ul>
         <span class="ml-auto navbar-text text-white">Server Status:&nbsp;<span
@@ -645,6 +651,20 @@
                  class="form-text text-muted mb-4">The automatically generated
             ID associated with this project.</small>
           <form novalidate>
+            <div class="form-group row proj_nickname_group">
+              <div class="col-sm-4">
+                <label for="proj_nickname"
+                       class="col-form-label">Nickname<span class="text-danger">*</span></label>
+                <small id="proj_nickname_help"
+                       class="form-text text-muted">A short nickname for your project.</small>
+              </div>
+              <div class="col-sm-3">
+                <input type="text"
+                       class="form-control"
+                       id="proj_nickname"
+                       required>
+              </div>
+            </div>
             <div class="form-group row proj_title_group">
               <div class="col-sm-4">
                 <label for="proj_title"
@@ -653,7 +673,7 @@
                        class="form-text text-muted">Title of your project or
                   paper.</small>
               </div>
-              <div class="col-sm-3">
+              <div class="col-sm-7">
                 <input type="text"
                        class="form-control"
                        id="proj_title"
@@ -2956,6 +2976,57 @@
       </div>
     </div>
   </div>
-</div></body>
+</div>
+
+<!--My account modal.-->
+<div class="modal fade" id="account_modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header alert-primary">
+        <h5 class="modal-title"><i class="fas fa-user-circle mr-1"></i>Account Information</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex">
+          <label class="col-sm-2 pl-0">Email</label>
+          <label class="col-sm-5 pl-0" id="account_email">example@example.com</label>
+        </div>
+        <hr>
+        <h5>Projects</h5>
+        <table class="table table-sm">
+          <thead class="thead-light">
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Nickname</th>
+              <th scope="col">Created (local time)</th>
+              <th scope="col">Status</th>
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody id="account_project_table_body">
+            <tr class="project_info_row" style="display:none">
+              <th class="project_info_id" scope="row">PROJECT_ID</th>
+              <td class="project_info_nickname">PROJECT_NAME</td>
+              <td class="project_info_created">PROJECT_CREATED</td>
+              <td class="project_info_status">PROJECT_STATUS</td>
+              <td>
+                <a href="" class="project_info_link" target="_blank"> <i class="fa fa-external-link-alt"></i></a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal" data-toggle="modal" data-target="#reset">Reset password</button>
+        <button type="button" class="btn btn-warning" id="logout_btn">Logout</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
 
 </html>
