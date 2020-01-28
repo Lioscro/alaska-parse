@@ -756,8 +756,8 @@ function _resumeProject() {
 /**
  * Start analysis of the project.
  */
-function startProject(callback = function () {}, reset = false) {
-  _runCloudFunction('startProject', callback, {objectId: project.id, reset: reset});
+function startProject(callback = function () {}) {
+  _runCloudFunction('startProject', callback, {objectId: project.id});
 }
 
 function loadMetaInput() {
@@ -1753,6 +1753,7 @@ async function _setProjectProgress() {
   switch (progress) {
     case 'queued':
       badge.addClass('badge-secondary');
+      enableMetadataEditBtn();
       break;
     case 'running':
       badge.addClass('badge-info flash animated infinite');
@@ -4369,6 +4370,7 @@ function copy_to_form(form_group, to_form_class_name, disable) {
       // Deal with paired end only if the sample has an even number
       // of reads.
       var n_reads = reads[name].length;
+      var short_to_read = {};
       if (n_reads % 2 == 0) {
         var n_pairs = n_reads / 2;
 
@@ -4377,6 +4379,7 @@ function copy_to_form(form_group, to_form_class_name, disable) {
           var read = reads[name][i];
           var split = read.get('path').split('/');
           var short = split[split.length - 1];
+          short_to_read[short] = read;
           rs.push(short);
         }
         rs = rs.sort();
@@ -4384,10 +4387,11 @@ function copy_to_form(form_group, to_form_class_name, disable) {
         // Compute options.
         var options = [];
         for (var i = 0; i < n_reads; i++) {
-          var read = rs[i];
+          var short = rs[i];
+          var read = short_to_read[short];
           var option = $('<option>', {
             text: short,
-            value: read
+            value: read.id
           });
 
           options.push(option);
