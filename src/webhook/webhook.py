@@ -596,7 +596,10 @@ def project_sleuth(objectId, port):
 def project_sleuth_close(objectId):
     try:
         token = request.args.get('sessionToken')
-        with SessionToken(token):
+        if token:
+            with SessionToken(token):
+                return _project_sleuth_close(objectId)
+        else:
             return _project_sleuth_close(objectId)
     except Exception as e:
         print(traceback.format_exc(), file=sys.stderr)
