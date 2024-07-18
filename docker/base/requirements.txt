@@ -4,4 +4,4 @@ flask
 git+https://github.com/milesrichardson/ParsePy.git
 pandas
 requests
-sentry-sdk==1.14.0
+sentry-sdk==2.8.0
